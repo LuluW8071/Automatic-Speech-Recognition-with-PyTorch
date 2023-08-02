@@ -23,14 +23,13 @@ Edit environment variables to insert path
 >path/to/ffmpeg/bin/
 ```
 
-1. Data Collection
-1.1 Collect your own data:
-use `create_commonvoice_jsons.py` to convert from mp3 to wav and to create train and test json's with the data from Commonvoice by Mozilla
+1. Data Collection <br>
+    1.1 Collect your own data: <br> 
+            use `create_commonvoice_jsons.py` to convert from mp3 to wav and to create train and test json's with the data from Commonvoice by Mozilla
     ```
     python create_commonvoice_jsons.py --file_path /path/to/commonvoice/file/.tsv --save_json_path /path/where/you/want/them/saved 
     ```
 
-    
     if you dont want to convert use `--not-convert` 
     <br>
     This will create a train and test json in this format...
