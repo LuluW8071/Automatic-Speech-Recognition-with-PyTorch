@@ -22,15 +22,18 @@ def main(args):
             print(str(length) + " files found")
 
         for row in reader:
-            file_name = row['path']
-            filename = file_name.rpartition('.')[0] + ".wav"
-            text = row['sentence']
-
-            if args.convert:
-                data.append({
-                    "key": os.path.join('clips', filename),
-                    "text": text
-                })
+            if i!=0:
+                print(row.keys())
+                file_name = row['path']
+                filename = file_name.rpartition('.')[0] + ".wav"
+                text = row['sentence']
+                print(file_name)
+                # print(file_name[1])
+                if args.convert:
+                    data.append({
+                        "key": os.path.join('clips', filename),
+                        "text": text
+                    })
 
                 print(f"converting file {index}/{length} to wav", end="\r")
 
