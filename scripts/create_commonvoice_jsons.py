@@ -18,7 +18,11 @@ def main(args):
         length = sum(1 for _ in reader)  # Count the number of lines in the CSV
         csvfile.seek(0)
         index = 1
+<<<<<<< HEAD
         print(reader)
+=======
+        # print(reader)
+>>>>>>> e54886e58bccff4156fc6314d05fe50e28b5f3d7
 
         if args.convert:
             print(str(length) + " files found")
@@ -29,6 +33,7 @@ def main(args):
         i=0 
         for row in reader:
             if i!=0:
+<<<<<<< HEAD
                 print(row.keys())
                 file_name = row['path']
                 filename = file_name.rpartition('.')[0] + ".wav"
@@ -47,12 +52,38 @@ def main(args):
                     dst = os.path.join(args.save_json_path, 'clips', filename)
                     # print(src)
 
+=======
+                # print(row.keys())
+                file_name = row['path']
+                filename = file_name.rpartition('.')[0] + ".wav"
+                text = row['sentence']
+                # print(file_name)
+                # print(file_name[1])
+
+                if args.convert:
+                    data.append({
+                        "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
+                        "text": text
+                    })
+
+
+                    print(f"converting file {index}/{length} to wav", end="\r")
+
+                    src = os.path.join(args.audio,file_name)
+                    dst = os.path.join(args.save_json_path, 'clips', filename)
+                    # print(src)
+
+>>>>>>> e54886e58bccff4156fc6314d05fe50e28b5f3d7
                     sound = AudioSegment.from_mp3(src)
                     sound.export(dst, format="wav")
                     index = index + 1
                 else:
                     data.append({
+<<<<<<< HEAD
                         "key": os.path.join('clips', file_name),
+=======
+                        "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
+>>>>>>> e54886e58bccff4156fc6314d05fe50e28b5f3d7
                         "text": text
                     })
             i+=1
