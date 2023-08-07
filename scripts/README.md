@@ -16,3 +16,5 @@ Note: <br>
     }
 ]
 ```
+
+    py create_commonvoice_jsons.py --file_path "E:\cv-corpus-7.0-2021-07-21\en\train.tsv" --save_json_path "F:\SpeechRecognition\scripts" --audio "E:\cv-corpus-7.0-2021-07-21\en\clips" --percent 10 --convert
