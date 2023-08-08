@@ -36,6 +36,7 @@ Edit environment variables to insert path
     - if you dont want to convrt use `create_jsons_only.py`
     <br>
     This will create a train and test json in this format...
+
     ```
     // make each sample is on a seperate line
     {"key": "/path/to/audio/speech.wav", "text": "this is yourtext"}
