@@ -38,7 +38,6 @@ Edit environment variables to insert path
     This will create a train and test json in this format...
     ```
     // make each sample is on a seperate line
-
     {"key": "/path/to/audio/speech.wav", "text": "this is yourtext"}
     {"key": "/path/to/audio/speech.wav", "text": "another textexample"}
     ```
