@@ -27,8 +27,7 @@ Edit environment variables to insert path
     1.1 Collect your own data: <br> 
             use `create_commonvoice.py` to convert from mp3 to wav and to create train and test json's with the data from Commonvoice by Mozilla
     ```
-    py create_commonvoice.py` --file_path "file_path\to\.csv" --save_json_path "save\json\path" --audio "audio\src_path\clips\to\.mp3" --percent 10 --convert
-
+    py create_commonvoice.py` --file_path "file_path\to\.tsv" --save_json_path "save\json\path" --audio "audio\src_path\clips\to\.mp3" --percent 10 --convert
     ```
     ##### Note:
     - It is better to give absolute path instead for training the input 
@@ -42,4 +41,4 @@ Edit environment variables to insert path
     {"key": "/path/to/audio/speech.wav", "text": "this is yourtext"}
     {"key": "/path/to/audio/speech.wav", "text": "another textexample"}
     ```
-   - if you want to check the converted files and jsons use `check_converted_files.py`
+    - if you want to check the converted files and jsons use `check_converted_files.py`
