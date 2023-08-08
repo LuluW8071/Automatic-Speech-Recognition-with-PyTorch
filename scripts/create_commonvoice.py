@@ -3,7 +3,6 @@ import argparse
 import json
 import random
 import csv
-import subprocess
 from pydub import AudioSegment
 
 def main(args):
@@ -19,69 +18,49 @@ def main(args):
         length = sum(1 for _ in reader)  # Count the number of lines in the CSV
         csvfile.seek(0)
         index = 1
-        # print(reader)
 
         if args.convert:
             print(str(length) + " files found")
-            # print("ok1")
-            # print(type(reader))
         
-        #read csv file and convert files of mp3 to .wav 
-        i=0 
+        # Read csv file and convert files from mp3 to .wav 
+        i = 0 
         for row in reader:
-            if i!=0:
-                # print(row.keys())
+            if i != 0:
                 file_name = row['path']
                 filename = file_name.rpartition('.')[0] + ".wav"
                 text = row['sentence']
-                # print(file_name)
-                # print(file_name[1])
 
-                if args.convert:
-                    data.append({
-                        "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
-                        "text": text
-                    })
+                src = os.path.join(args.audio, file_name)
+                dst = os.path.join(args.save_json_path, 'clips', filename)
 
-
-                    print(f"Converting file {index}/{length} to wav ------------ ({(index/length)*100:.3f}%)", end="\r")
-
-
-                    src = os.path.join(args.audio,file_name)
-                    dst = os.path.join(args.save_json_path, 'clips', filename)
-                    # print(src)
-
-                    """
-                    Note:
-                    The conversion process using nvenc codec and cpu is same for audio files 
-                    """
-                    # Use FFmpeg with Nvidia codec for audio conversion
-                    # os.system(f'ffmpeg -i "{src}" -c:a aac -strict experimental -b:a 192k -c:v copy "{dst}"')
-
-                    # Load the MP3 audio
-                    sound = AudioSegment.from_mp3(src)
-                    duration_in_seconds = len(sound) / 1000
+                # Load the MP3 audio
+                sound = AudioSegment.from_mp3(src)
+                duration_in_seconds = len(sound) / 1000
+                
+                if duration_in_seconds <= 30:
+                    if args.convert:
+                        data.append({
+                            "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
+                            "text": text
+                        })
                     
-                    if duration_in_seconds > 30:
-                        print(f"Skipping file {index}/{length}: Duration > 30 seconds")
-                    else:
-                        print(f"Converting file {index}/{length} to wav", end="\r")
-                        sound = sound.set_frame_rate(32000)  # Set frame rate (bitrate) to 32 kbps
-                        
-                        # Idk how above line works but somehow the wav audio bitrate is set to 512Kbps
+                        print(f"Converting file {index}/{length} to wav ------------ ({(index/length)*100:.3f}%)", end="\r")
 
+                        sound = sound.set_frame_rate(32000)  # Set frame rate (bitrate) to 32 kbps
                         sound.export(dst, format="wav")  # Export the modified sound to wav
                         index = index + 1
+                    else:
+                        data.append({
+                            "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
+                            "text": text
+                        })
                 else:
-                    data.append({
-                        "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
-                        "text": text
-                    })
-            i+=1
+                    print(f"Skipping file {index}/{length}: Duration > 30 seconds - {filename}")
+            i += 1
 
     random.shuffle(data)
 
-    #JSON for train and test
+    # JSON for train and test
     print("creating JSON's")
 
     train_data = data[:int(length * (1 - percent / 100))]
