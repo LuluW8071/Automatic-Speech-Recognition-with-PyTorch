@@ -42,4 +42,4 @@ Edit environment variables to insert path
     {"key": "/path/to/audio/speech.wav", "text": "this is yourtext"}
     {"key": "/path/to/audio/speech.wav", "text": "another textexample"}
     ```
-   - if you want to check the converted files and jsons use `check_converted_files`
+   - if you want to check the converted files and jsons use `check_converted_files.py`
