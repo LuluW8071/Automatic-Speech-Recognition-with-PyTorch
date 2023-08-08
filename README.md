@@ -25,29 +25,21 @@ Edit environment variables to insert path
 
 1. Data Collection <br>
     1.1 Collect your own data: <br> 
-            use `create_commonvoice_jsons.py` to convert from mp3 to wav and to create train and test json's with the data from Commonvoice by Mozilla
+            use `create_commonvoice.py` to convert from mp3 to wav and to create train and test json's with the data from Commonvoice by Mozilla
     ```
-<<<<<<< HEAD
-    python create_commonvoice_jsons.py --file_path "/path/to/commonvoice/file/.csv" --audio "audio/src/path" --save_json_path "/path/where/you/want/them/saved" 
-=======
-    py create_commonvoice_jsons.py --file_path "file_path\to\.csv" --save_json_path "save\json\path" --audio "audio\src_path\clips\to\.mp3" --percent 10 --convert
->>>>>>> e54886e58bccff4156fc6314d05fe50e28b5f3d7
+    py create_commonvoice.py` --file_path "file_path\to\.csv" --save_json_path "save\json\path" --audio "audio\src_path\clips\to\.mp3" --percent 10 --convert
+
     ```
     ##### Note:
     - It is better to give absolute path instead for training the input 
 
-    - if you dont want to convert use `--not-convert` 
+    - if you dont want to convrt use `create_jsons_only.py`
     <br>
-    
     This will create a train and test json in this format...
     ```
     // make each sample is on a seperate line
-<<<<<<< HEAD
-    {"key": "/path/to/audio/speech.wav, "text": "this is yourtext"}
-    {"key": "/path/to/audio/speech.wav, "text": "another textexample"}
-    ``` 
-=======
+
     {"key": "/path/to/audio/speech.wav", "text": "this is yourtext"}
     {"key": "/path/to/audio/speech.wav", "text": "another textexample"}
-    ``` 
->>>>>>> e54886e58bccff4156fc6314d05fe50e28b5f3d7
+    ```
+   - if you want to check the converted files and jsons use `check_converted_files`
