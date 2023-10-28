@@ -2,10 +2,11 @@ import os
 import ast
 import torch
 import torch.nn as nn
+# import pytorch_lightning as pl
 from torch.nn import functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from pytorch_lightning.core.lightning import LightningModule
+from pytorch_lightning import LightningModule
 from pytorch_lightning import Trainer
 from argparse import ArgumentParser
 from model import SpeechRecognition
