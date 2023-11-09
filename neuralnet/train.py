@@ -2,7 +2,7 @@ import os
 import ast
 import torch
 import torch.nn as nn
-# import pytorch_lightning as pl
+import pytorch_lightning as pl
 from torch.nn import functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -21,7 +21,9 @@ class SpeechModule(LightningModule):
         self.model = model
         self.criterion = nn.CTCLoss(blank=28, zero_infinity=True)
         self.args = args
-
+        # Initialize the scheduler
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.configure_optimizers(), step_size=10, gamma=0.5)
+    
     def forward(self, x, hidden):
         return self.model(x, hidden)
 
@@ -49,11 +51,13 @@ class SpeechModule(LightningModule):
         # Calculate average validation loss for the epoch
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         tensorboard_logs = {'val_loss': avg_loss}
+        self.scheduler.step()  # Step the scheduler without any argument
+        self.log('val_loss', avg_loss)  # Log the validation loss
         return {'val_loss': avg_loss, 'log': tensorboard_logs}
 
     def training_step(self, batch, batch_idx):
         loss = self.step(batch)
-        logs = {'loss': loss, 'lr': self.optimizer.param_groups[0]['lr'] }
+        logs = {'loss': loss, 'lr': self.optimizers.param_groups[0]['lr'] }
         return {'loss': loss, 'log': logs}
 
     def train_dataloader(self):

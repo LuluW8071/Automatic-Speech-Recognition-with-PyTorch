@@ -84,7 +84,9 @@ class Data(torch.utils.data.Dataset):
         self.text_process = TextProcess()
 
         print("Loading data json file from", json_path)
-        self.data = pd.read_json(json_path, lines=True)
+        self.data = pd.read_json(json_path, encoding="utf-8")
+
+        # print(self.data[1])
 
         if valid:
             self.audio_transforms = torch.nn.Sequential(
@@ -115,7 +117,7 @@ class Data(torch.utils.data.Dataset):
                 raise Exception('spectrogram len is bigger then label len')
             if spectrogram.shape[0] > 1:
                 raise Exception('dual channel, skipping audio file %s'%file_path)
-            if spectrogram.shape[2] > 1650:
+            if spectrogram.shape[2] > 15000:
                 raise Exception('spectrogram to big. size %s'%spectrogram.shape[2])
             if label_len == 0:
                 raise Exception('label len is zero... skipping %s'%file_path)
@@ -128,7 +130,7 @@ class Data(torch.utils.data.Dataset):
     def describe(self):
         return self.data.describe()
 
-
+import time 
 def collate_fn_padd(data):
     '''
     Padds batch of variable length
@@ -136,15 +138,19 @@ def collate_fn_padd(data):
     note: it converts things ToTensor manually here since the ToTensor transform
     assume it takes in images rather than arbitrary tensors.
     '''
+    
     # print(data)
+    # delay[1000]
     spectrograms = []
     labels = []
     input_lengths = []
     label_lengths = []
+    # print (data[1])
     for (spectrogram, label, input_length, label_length) in data:
         if spectrogram is None:
             continue
-       # print(spectrogram.shape)
+        # print(spectrogram.shape)
+
         spectrograms.append(spectrogram.squeeze(0).transpose(0, 1))
         labels.append(torch.Tensor(label))
         input_lengths.append(input_length)
