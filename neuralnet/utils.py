@@ -44,7 +44,7 @@ class TextProcess:
 		""" Use a character map and convert text to an integer sequence """
 		int_sequence = []
 		for c in text:
-			if c == ' ':
+			if c == ' ' or '.' or ',':
 				ch = self.char_map['<SPACE>']
 			else:
 				ch = self.char_map[c]

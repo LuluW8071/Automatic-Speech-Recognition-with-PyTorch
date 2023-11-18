@@ -7,3 +7,7 @@ scripts/__pycache__
 scripts/clips/
 scripts/test.json
 scripts/train.json
+virtual_env/
+neuralnet/__pycache__/
+neuralnet/tb_logs/
+model.ipynb
