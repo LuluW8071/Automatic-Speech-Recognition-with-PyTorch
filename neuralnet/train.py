@@ -58,6 +58,8 @@ class SpeechModule(LightningModule):
     def training_step(self, batch, batch_idx):
         loss = self.step(batch)
         logs = {'loss': loss, 'lr': self.optimizers.param_groups[0]['lr'] }
+        # Added per pytorch 1.1.0 
+        self.optimizers().step()
         return {'loss': loss, 'log': logs}
 
     def train_dataloader(self):
@@ -112,7 +114,8 @@ def main(args):
         speech_module = SpeechModule(model, args)
 
     logger = TensorBoardLogger(args.logdir, name='speech_recognition')
-    trainer = Trainer(logger=logger)
+    # warning messages
+    # trainer = Trainer(logger=logger)
 
     trainer = Trainer(
         max_epochs=args.epochs, gpus=args.gpus,
@@ -174,3 +177,7 @@ if __name__ == "__main__":
            raise Exception("the directory for path {} does not exist".format(args.save_model_path))
 
     main(args)
+
+'''
+py .\train.py --train_file "D:\Speech\train.json" --valid_file "D:\Speech\test.json" --save_model_path 'D:\Repository\Speech Recognition\neuralnet\model' --gpus 1
+'''
