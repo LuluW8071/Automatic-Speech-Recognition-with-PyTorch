@@ -1,76 +1,61 @@
 import os
 import ast
 import torch
-import torch.nn as nn
-import pytorch_lightning as pl
-from torch.nn import functional as F
+from torch import nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from pytorch_lightning import LightningModule
-from pytorch_lightning import Trainer
+from pytorch_lightning import LightningModule, Trainer, seed_everything
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from argparse import ArgumentParser
 from model import SpeechRecognition
 from dataset import Data, collate_fn_padd
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 class SpeechModule(LightningModule):
+
     def __init__(self, model, args):
         super(SpeechModule, self).__init__()
         self.model = model
         self.criterion = nn.CTCLoss(blank=28, zero_infinity=True)
         self.args = args
-        # Initialize the scheduler
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.configure_optimizers(), step_size=10, gamma=0.5)
-    
+
     def forward(self, x, hidden):
         return self.model(x, hidden)
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.model.parameters(), self.args.learning_rate)
-        return optimizer
+        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate)
+        scheduler = {
+            'scheduler': optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=6),
+            'monitor': 'val_loss',
+        }
+        return [optimizer], [scheduler]
 
     def step(self, batch):
-        spectrograms, labels, input_lengths, label_lengths = batch 
+        spectrograms, labels, input_lengths, label_lengths = batch
         bs = spectrograms.shape[0]
         hidden = self.model._init_hidden(bs)
         hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
         output, _ = self(spectrograms, (hn, c0))
-        output = F.log_softmax(output, dim=2)
+        output = torch.nn.functional.log_softmax(output, dim=2)
         loss = self.criterion(output, labels, input_lengths, label_lengths)
         return loss
 
-    def training_epoch_end(self, outputs):
-        # Calculate average training loss for the epoch
-        avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
-        logs = {'loss': avg_loss}
-        return {'loss': avg_loss, 'log': logs}
-
-    def validation_epoch_end(self, outputs):
-        # Calculate average validation loss for the epoch
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        tensorboard_logs = {'val_loss': avg_loss}
-        self.scheduler.step()  # Step the scheduler without any argument
-        self.log('val_loss', avg_loss)  # Log the validation loss
-        return {'val_loss': avg_loss, 'log': tensorboard_logs}
-
     def training_step(self, batch, batch_idx):
         loss = self.step(batch)
-        logs = {'loss': loss, 'lr': self.optimizers.param_groups[0]['lr'] }
-        # Added per pytorch 1.1.0 
-        self.optimizers().step()
-        return {'loss': loss, 'log': logs}
+        logs = {'loss': loss, 'lr': self.trainer.optimizers[0].param_groups[0]['lr']}
+        self.log_dict(logs)
+        return loss
 
     def train_dataloader(self):
         d_params = Data.parameters
         d_params.update(self.args.dparams_override)
         train_dataset = Data(json_path=self.args.train_file, **d_params)
         return DataLoader(dataset=train_dataset,
-                            batch_size=self.args.batch_size,
-                            num_workers=self.args.data_workers,
-                            pin_memory=True,
-                            collate_fn=collate_fn_padd)
+                          batch_size=self.args.batch_size,
+                          num_workers=self.args.data_workers,
+                          pin_memory=True,
+                          collate_fn=collate_fn_padd)
 
     def validation_step(self, batch, batch_idx):
         loss = self.step(batch)
@@ -78,32 +63,32 @@ class SpeechModule(LightningModule):
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        self.scheduler.step(avg_loss)
-        tensorboard_logs = {'val_loss': avg_loss}
-        return {'val_loss': avg_loss, 'log': tensorboard_logs}
+        self.log('val_loss', avg_loss, prog_bar=True)
+        return {'val_loss': avg_loss}
 
     def val_dataloader(self):
         d_params = Data.parameters
         d_params.update(self.args.dparams_override)
         test_dataset = Data(json_path=self.args.valid_file, **d_params, valid=True)
         return DataLoader(dataset=test_dataset,
-                            batch_size=self.args.batch_size,
-                            num_workers=self.args.data_workers,
-                            collate_fn=collate_fn_padd,
-                            pin_memory=True)
+                          batch_size=self.args.batch_size,
+                          num_workers=self.args.data_workers,
+                          collate_fn=collate_fn_padd,
+                          pin_memory=True)
 
 
 def checkpoint_callback(args):
     return ModelCheckpoint(
-        filepath=args.save_model_path,
-        save_top_k=True,
-        verbose=True,
+        filename='best_model',
         monitor='val_loss',
         mode='min',
-        prefix=''
+        save_top_k=1,
+        dirpath=args.save_model_path,
     )
 
+
 def main(args):
+    seed_everything(42)  # For reproducibility
     h_params = SpeechRecognition.hyper_parameters
     h_params.update(args.hparams_override)
     model = SpeechRecognition(**h_params)
@@ -114,18 +99,19 @@ def main(args):
         speech_module = SpeechModule(model, args)
 
     logger = TensorBoardLogger(args.logdir, name='speech_recognition')
-    # warning messages
-    # trainer = Trainer(logger=logger)
 
     trainer = Trainer(
-        max_epochs=args.epochs, gpus=args.gpus,
-        num_nodes=args.nodes, distributed_backend=None,
-        logger=logger, gradient_clip_val=1.0,
+        max_epochs=args.epochs,
+        gpus=args.gpus,
+        num_nodes=args.nodes,
+        distributed_backend=None,
+        logger=logger,
+        gradient_clip_val=1.0,
         val_check_interval=args.valid_every,
+        callbacks=[LearningRateMonitor(logging_interval='epoch')],
         checkpoint_callback=checkpoint_callback(args),
         resume_from_checkpoint=args.resume_from_checkpoint
     )
-
     trainer.fit(speech_module)
 
 if __name__ == "__main__":
@@ -177,7 +163,3 @@ if __name__ == "__main__":
            raise Exception("the directory for path {} does not exist".format(args.save_model_path))
 
     main(args)
-
-'''
-py .\train.py --train_file "D:\Speech\train.json" --valid_file "D:\Speech\test.json" --save_model_path 'D:\Repository\Speech Recognition\neuralnet\model' --gpus 1
-'''
