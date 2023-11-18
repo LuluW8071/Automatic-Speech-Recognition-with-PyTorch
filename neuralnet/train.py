@@ -106,8 +106,8 @@ def main(args):
         distributed_backend=None,
         logger=logger,
         gradient_clip_val=1.0,
-        # val_check_interval=args.valid_every,
-        val_check_interval=10,
+        val_check_interval=args.valid_every,
+        # val_check_interval=10,
         callbacks=[LearningRateMonitor(logging_interval='epoch')],
         checkpoint_callback=checkpoint_callback(args),
         resume_from_checkpoint=args.resume_from_checkpoint,
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     
     # general
     parser.add_argument('--epochs', default=10, type=int, help='number of total epochs to run')
-    parser.add_argument('--batch_size', default=32, type=int, help='size of batch')
+    parser.add_argument('--batch_size', default=64, type=int, help='size of batch')
     parser.add_argument('--learning_rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--pct_start', default=0.3, type=float, help='percentage of growth phase in one cycle')
     parser.add_argument('--div_factor', default=100, type=int, help='div factor for one cycle')
