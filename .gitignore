@@ -11,3 +11,5 @@ virtual_env/
 neuralnet/__pycache__/
 neuralnet/tb_logs/
 model.ipynb
+neuralnet/model
+demo/

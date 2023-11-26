@@ -3,6 +3,7 @@ import argparse
 import torch
 from model import SpeechRecognition
 from collections import OrderedDict
+import os 
 
 def trace(model):
     model.eval()
@@ -28,7 +29,7 @@ def main(args):
     print("tracing model...")
     traced_model = trace(model)
     print("saving to", args.save_path)
-    traced_model.save(args.save_path)
+    traced_model.save(os.path.join(args.save_path, 'optimized_model.ckpt'))
     print("Done!")
 
 
