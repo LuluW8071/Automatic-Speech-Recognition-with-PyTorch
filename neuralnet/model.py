@@ -9,7 +9,7 @@ class ActDropNormCNN1D(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.norm = nn.LayerNorm(n_feats)
         self.keep_shape = keep_shape
-    
+
     def forward(self, x):
         x = x.transpose(1, 2)
         # x = self.norm(self.dropout(F.gelu(x)))
@@ -61,9 +61,28 @@ class SpeechRecognition(nn.Module):
 
     def forward(self, x, hidden):
         x = x.squeeze(1)  # batch, feature, time
-        x = self.cnn(x) # batch, time, feature
-        x = self.dense(x) # batch, time, feature
-        x = x.transpose(0, 1) # time, batch, feature
+        x = self.cnn(x)  # batch, time, feature
+        x = self.dense(x)  # batch, time, feature
+        x = x.transpose(0, 1)  # time, batch, feature
         out, (hn, cn) = self.lstm(x, hidden)
-        x = self.dropout2(F.gelu(self.layer_norm2(out)))  # (time, batch, n_class)
+        x = self.dropout2(F.gelu(self.layer_norm2(out))
+                          )  # (time, batch, n_class)
         return self.final_fc(x), (hn, cn)
+
+    # Model Summarization        
+    def print_model_summary(self):
+        print(f"{'='*40}\n{'Model Summary':^40}\n{'='*40}")
+        print("{:<25} {:<25} {:<20}".format("Layer", "Param #", "Shape"))
+        print("="*75)
+
+        total_params = 0
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                param_size = param.size()
+                total_params += param.numel()
+                print(f"{name:<25} {param.numel():<25} {str(param_size):<20}")
+
+        print("="*75)
+        print(f"Total Trainable Params: {total_params} ~ {round(total_params / 1e6, 1)}M")
+
+

@@ -92,6 +92,9 @@ def main(args):
     h_params.update(args.hparams_override)
     model = SpeechRecognition(**h_params)
 
+    # Print model summary
+    model.print_model_summary()
+
     if args.load_model_from:
         speech_module = SpeechModule.load_from_checkpoint(args.load_model_from, model=model, args=args)
     else:
@@ -107,7 +110,7 @@ def main(args):
         logger=logger,
         gradient_clip_val=1.0,
         val_check_interval=args.valid_every,
-        # val_check_interval=10,
+        # val_check_interval=10,        # comment above val_check_interval if dataset are less
         callbacks=[LearningRateMonitor(logging_interval='epoch')],
         checkpoint_callback=checkpoint_callback(args),
         resume_from_checkpoint=args.resume_from_checkpoint,
