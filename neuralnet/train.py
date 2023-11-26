@@ -11,6 +11,8 @@ from argparse import ArgumentParser
 from model import SpeechRecognition
 from dataset import Data, collate_fn_padd
 
+from comet_ml import Experiment
+from config import API_KEY, PROJECT_NAME
 
 class SpeechModule(LightningModule):
 
@@ -19,6 +21,7 @@ class SpeechModule(LightningModule):
         self.model = model
         self.criterion = nn.CTCLoss(blank=28, zero_infinity=True)
         self.args = args
+        self.experiment = Experiment(api_key=API_KEY, project_name=PROJECT_NAME)
 
     def forward(self, x, hidden):
         return self.model(x, hidden)
@@ -45,6 +48,9 @@ class SpeechModule(LightningModule):
         loss = self.step(batch)
         logs = {'loss': loss, 'lr': self.trainer.optimizers[0].param_groups[0]['lr']}
         self.log_dict(logs)
+        # Log train loss to Comet.ml with the step argument
+        self.experiment.log_metric('train_loss', loss.item(), step=self.global_step)
+
         return loss
 
     def train_dataloader(self):
@@ -64,6 +70,8 @@ class SpeechModule(LightningModule):
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         self.log('val_loss', avg_loss, prog_bar=True)
+        # Log validation loss to Comet.ml
+        self.experiment.log_metric('val_loss', avg_loss.item(), step=self.global_step)
 
     def val_dataloader(self):
         d_params = Data.parameters
