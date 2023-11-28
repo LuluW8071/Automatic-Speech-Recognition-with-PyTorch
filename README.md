@@ -36,7 +36,15 @@ This should create a train and test json in this format:
     ......
  ]
  ```
-<h5>2. Train Datasets </h5>
+<h5>2. Comet-ML API </h5>
+Edit `config.py` with your <a href='https://www.comet.com/site/'> Comet.ml </a>API key and project name to get real-time loss curve plot </br>
+
+```
+API_KEY = "#"  
+PROJECT_NAME = "#" 
+```
+
+<h5>3. Train Datasets </h5>
 
 ```
 py train.py --train_file "path\train.json" --valid_file "path\test.json" --save_model_path 'save\model\path' --gpus 1    
