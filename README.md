@@ -51,3 +51,9 @@ py train.py --train_file "path\train.json" --valid_file "path\test.json" --save_
 ```
 
 *Set `--gpus` flag to either `0` or `1` depending upon device you have </br>[for mux switch:1 else 0]*
+
+<h5>4. Resume Training </h5>
+
+```
+py train.py --train_file 'path\train.json' --valid_file 'path\test.json' --load_model_from "path\model\best_model.ckpt" --gpus 1 --resume_from_checkpoint "path\model\"
+```
