@@ -2,7 +2,6 @@ from neuralnet.utils import TextProcess
 import torch
 import ctcdecode
 
-
 textprocess = TextProcess()
 
 labels = [

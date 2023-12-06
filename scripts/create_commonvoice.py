@@ -14,7 +14,7 @@ def main(args):
         os.makedirs(clips_directory)
     
     with open(args.file_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter='\t')
+        reader = csv.DictReader(csvfile, delimiter=',')
         length = sum(1 for _ in reader)  # Count the number of lines in the CSV
         csvfile.seek(0)
         index = 1
@@ -46,7 +46,7 @@ def main(args):
                     
                         print(f"Converting file {index}/{length} to wav ------------ ({(index/length)*100:.3f}%)", end="\r")
 
-                        sound = sound.set_frame_rate(32000)  # Set frame rate (bitrate) to 32 kbps
+                        sound = sound.set_frame_rate(32000)  # Set frame rate (bitrate) to 128 kbps
                         sound.export(dst, format="wav")  # Export the modified sound to wav
                         index = index + 1
                     else:
