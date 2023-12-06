@@ -55,5 +55,5 @@ py train.py --train_file "path\train.json" --valid_file "path\test.json" --save_
 <h5>4. Resume Training </h5>
 
 ```
-py train.py --train_file 'path\train.json' --valid_file 'path\test.json' --load_model_from "path\model\best_model.ckpt" --gpus 1 --resume_from_checkpoint "path\model\"
+py train.py --train_file 'path\train.json' --valid_file 'path\test.json' --load_model_from 'path\model\best_model.ckpt' --resume_from_checkpoint 'path\model\' --save_model_path 'save\model\path' --gpus 1
 ```
