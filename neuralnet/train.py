@@ -118,11 +118,10 @@ def main(args):
         logger=logger,
         gradient_clip_val=1.0,
         val_check_interval=args.valid_every,
-        # val_check_interval=10,        # comment above val_check_interval if dataset are less
+        # val_check_interval=5,   # comment above val_check_interval if dataset are less
         callbacks=[LearningRateMonitor(logging_interval='epoch')],
         checkpoint_callback=checkpoint_callback(args),
         resume_from_checkpoint=args.resume_from_checkpoint,
-        # limit_val_batches=0.0
     )
     trainer.fit(speech_module)
 

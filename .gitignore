@@ -14,7 +14,10 @@ neuralnet/tb_logs/
 model.ipynb
 
 neuralnet/model
-demo/
 neuralnet/api.txt
 .vscode
-cpuenv/
+cpu_env/
+
+optimized_model.ckpt
+3glm.arpa
+audio_temp
