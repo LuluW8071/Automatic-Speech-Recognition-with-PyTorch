@@ -34,7 +34,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="testing the wakeword engine")
+    parser = argparse.ArgumentParser(description="freeze model checkpoint")
     parser.add_argument('--model_checkpoint', type=str, default=None, required=True,
                         help='Checkpoint of model to optimize')
     parser.add_argument('--save_path', type=str, default=None, required=True,
