@@ -76,7 +76,7 @@ py extract_sentences.py --file_path "file_path\to\.tsv" --save_txt_path "save\co
 ```
 
 <h3>7. KenLM </h3>
-<h4> <a href='https://github.com/kpu/kenlmBuild'> Build & Compile</a></h4>
+<h4> <a href='https://github.com/kpu/kenlm'> Build & Compile</a></h4>
 Use cmake, see BUILDING for build dependencies and more detail.
 
 ```
