@@ -66,6 +66,7 @@ The library is largely self-contained and requires only PyTorch. Building the C+
 # get the code
 git clone --recursive https://github.com/parlance/ctcdecode.git
 cd ctcdecode
+pip install .
 ```
 <h3>6. Sentence Corpus Extraction </h3>
 Use `extract_sentences.py` to extract sentences with the data from Commonvoice by Mozilla </br>
