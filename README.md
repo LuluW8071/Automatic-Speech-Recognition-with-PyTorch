@@ -90,10 +90,10 @@ Then, enter `build/bin` directory where lmplz resides
 ```
 lmplz -o n <path/to/corpus.txt> <path/save/language/model.arpa>
 ```
-*Where,
-`-o n` is order of words to select at once when building kenlm
-`nglm.arpa` name for arpa file for llm 
-if `-o 1` give name `1glm.arpa` and so on for better readability.`*
+*Where, <br>
+&nbsp; `-o n` is order of words to select at once when building kenlm <br>
+&nbsp; `nglm.arpa` name for arpa file for llm <br>
+&nbsp; if `-o 1` give name `1glm.arpa` and so on for better readability.*
 
 <h3>8. Engine </h3>
 
