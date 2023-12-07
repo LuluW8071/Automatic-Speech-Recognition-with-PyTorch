@@ -30,7 +30,7 @@ def extract_sentences(args):
     print("Done!")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Utility script to extract cleaned sentences from Common Voice CSV.")
+    parser = argparse.ArgumentParser(description="Utility script to extract cleaned sentences from Common Voice Datasets")
     parser.add_argument('--file_path', type=str, default=None, required=True,
                         help='path to one of the .tsv files found in cv-corpus')
     parser.add_argument('--save_txt_path', type=str, default=None, required=True,
