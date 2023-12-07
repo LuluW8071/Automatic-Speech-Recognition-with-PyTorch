@@ -5,7 +5,7 @@ import string
 
 def extract_sentences(args):
     data = []
-    sentences_file_path = os.path.join(args.save_txt_path, 'sentences.txt')
+    sentences_file_path = os.path.join(args.save_txt_path, 'corpus.txt')
 
     with open(args.file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=',')
