@@ -7,9 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Speech Recognition Demo</title>
 
-  <link rel="stylesheet" href="assets/style.css" />
-  <script src="assets/script.js" defer></script>
-  
+  <link rel="stylesheet" href="{{url_for('static',filename='assets/style.css')}}" />
+
 </head>
 
 <body>
@@ -19,5 +18,6 @@
   <div id="transcript"></div>
 
 </body>
+<script src="{{url_for('static',filename='assets/script.js')}}" ></script>
 
 </html>
