@@ -8,7 +8,7 @@ from engine import SpeechRecognitionEngine
 
 
 global asr_engine
-app = Flask(__name__)
+app = Flask(__name__,static_folder='static', static_url_path='/static')
 
 
 @app.route("/")
@@ -39,10 +39,10 @@ class DemoAction:
     def __call__(self, x):
         results, current_context_length = x
         self.current_beam = results
-        trascript = " ".join(self.asr_results.split() + results.split())
-        self.save_transcript(trascript)
+        transcript = " ".join(self.asr_results.split() + results.split())
+        self.save_transcript(transcript)
         if current_context_length > 10:
-            self.asr_results = trascript
+            self.asr_results = transcript
 
     def save_transcript(self, transcript):
         with open("transcript.txt", 'w+') as f:
@@ -59,7 +59,4 @@ if __name__ == "__main__":
     asr_engine = SpeechRecognitionEngine(args.model_file, args.ken_lm_file)
     webbrowser.open_new('http://127.0.0.1:3000/')
     app.run(port=3000)
-
-'''
-python app.py --model_file "model/optimized_model.ckpt" --ken_lm_file "D:/Repository/kenlm/lm/test.arpa"
-'''
+    

@@ -1,4 +1,5 @@
 """Freezes and optimize the model. Use after training."""
+
 import argparse
 import torch
 from model import SpeechRecognition
@@ -29,7 +30,7 @@ def main(args):
     print("tracing model...")
     traced_model = trace(model)
     print("saving to", args.save_path)
-    traced_model.save(os.path.join(args.save_path, 'optimized_model.ckpt'))
+    traced_model.save(os.path.join(args.save_path, 'optimized_model.pt'))
     print("Done!")
 
 
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_checkpoint', type=str, default=None, required=True,
                         help='Checkpoint of model to optimize')
     parser.add_argument('--save_path', type=str, default=None, required=True,
-                        help='path to save optmized model')
+                        help='path to save optimized model')
 
     args = parser.parse_args()
     main(args)
