@@ -108,10 +108,10 @@ class DemoAction:
     def __call__(self, x):
         results, current_context_length = x
         self.current_beam = results
-        trascript = " ".join(self.asr_results.split() + results.split())
-        print(trascript)
+        transcript = " ".join(self.asr_results.split() + results.split())
+        print(transcript)
         if current_context_length > 10:
-            self.asr_results = trascript
+            self.asr_results = transcript
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="demoing the speech recognition engine in terminal.")
