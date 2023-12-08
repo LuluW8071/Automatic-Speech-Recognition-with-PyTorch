@@ -29,7 +29,7 @@ def main(args):
     print("tracing model...")
     traced_model = trace(model)
     print("saving to", args.save_path)
-    traced_model.save(os.path.join(args.save_path, 'optimized_model.ckpt'))
+    traced_model.save(os.path.join(args.save_path, 'optimized_model.pt'))
     print("Done!")
 
 
