@@ -95,7 +95,13 @@ lmplz -o n <path/to/corpus.txt> <path/save/language/model.arpa>
 &nbsp; `nglm.arpa` name for arpa file for llm <br>
 &nbsp; if `-o 1` give name `1glm.arpa` and so on for better readability.*
 
-<h3>8. Engine </h3>
+<h3>8. Freeze Model Checkpoint </h3>
+*Freezes and optimize the model. Use after training*
+```
+py freeze_model.py --model_checkpoint "path/model/speechrecognition.ckpt" --save_path "path/to/save/"
+```
+
+<h3>9. Engine </h3>
 
 ```
 py engine.py --file_path "path/model/speechrecognition.ckpt" --save_txt_path "path/to/nglm.arpa or path/to/nglm.bin"
