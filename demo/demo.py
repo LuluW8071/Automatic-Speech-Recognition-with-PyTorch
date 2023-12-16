@@ -8,7 +8,7 @@ from engine import SpeechRecognitionEngine
 
 
 global asr_engine
-app = Flask(__name__)
+app = Flask(__name__,static_folder='static', static_url_path='/static')
 
 
 @app.route("/")
