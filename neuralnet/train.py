@@ -91,7 +91,6 @@ def checkpoint_callback(args):
         mode='min',
         save_top_k=1,
         dirpath=args.save_model_path,
-        # save_weights_only=True,  # Save only the model weights in binary format
     )
 
 

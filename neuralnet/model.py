@@ -80,21 +80,24 @@ class SpeechRecognition(nn.Module):
         print('='*80)
 
         counter = 1
+        total_params = 0
         for name, module in self.named_children():
-            trainable_params = sum(p.numel() for p in module.parameters() if p.requires_grad)
-            clean_name = name.replace('\t', '').replace(' ', '')  
-            print(row_format.format(counter, f"model.{clean_name}", module.__class__.__name__, trainable_params))
+            params = sum(p.numel() for p in module.parameters())
+            total_params += params
+            clean_name = f"model.{name}".replace('\t', '').replace(' ', '') 
+            print(row_format.format(counter, clean_name, module.__class__.__name__, params))
 
             if hasattr(module, 'named_children'):
                 for child_name, child_module in module.named_children():
-                    trainable_params_child = sum(p.numel() for p in child_module.parameters() if p.requires_grad)
+                    params_child = sum(p.numel() for p in child_module.parameters())
+                    total_params += params_child
                     full_child_name = f"model.{name}.{child_name}".replace('\t', '').replace(' ', '') 
-                    print(row_format.format('', full_child_name, child_module.__class__.__name__, trainable_params_child))
+                    print(row_format.format('', full_child_name, child_module.__class__.__name__, params_child))
             counter += 1
 
         print('='*80)
-        total_trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        print(f"Total Trainable Params: {total_trainable_params} ~ {round(total_trainable_params / 1e6, 1)}M")
+        print(f"Total Trainable Params: {total_params} ~ {round(total_params / 1e6, 2)}M")
+        print('='*80)
 
 
 
