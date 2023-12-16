@@ -4,6 +4,25 @@ from torch.nn import functional as F
 
 
 class ActDropNormCNN1D(nn.Module):
+    """
+    1D CNN with activation, dropout, and layer normalization.
+
+    Parameters:
+        - in_channels (int): Number of input channels.
+        - keep_shape (bool): If True, preserves the shape of the input tensor.
+
+    Input Shape:
+        (batch_size, in_channels, sequence_length)
+
+    Output Shape:
+        (batch_size, in_channels, sequence_length)
+
+    Architecture:
+        - Conv1d with kernel size 10 and stride 2.
+        - GELU activation function.
+        - Dropout with probability 0.1.
+        - LayerNorm normalization.
+    """
     def __init__(self, n_feats, dropout, keep_shape=False):
         super(ActDropNormCNN1D, self).__init__()
         self.dropout = nn.Dropout(dropout)
@@ -21,6 +40,31 @@ class ActDropNormCNN1D(nn.Module):
 
 
 class SpeechRecognition(nn.Module):
+    """
+    Speech Recognition model with CNN and LSTM layers.
+
+    Hyperparameters:
+        - num_classes (int): Number of output classes.
+        - n_feats (int): Number of input features.
+        - dropout (float): Dropout probability.
+        - hidden_size (int): Size of the LSTM hidden layer.
+        - num_layers (int): Number of LSTM layers.
+
+    Input Shape:
+        (batch_size, 1, feature, time)
+
+    Output Shape:
+        - Logits: (time, batch_size, num_classes)
+        - Hidden State Tuple: (hn, cn)
+
+    Architecture:
+        - 1D CNN with activation, dropout, and layer normalization.
+        - Dense layers with linear, layer normalization, GELU activation, and dropout.
+        - Unidirectional LSTM layer.
+        - Layer normalization and dropout.
+        - Final fully connected layer.
+    """
+
     hyper_parameters = {
         "num_classes": 29,
         "n_feats": 81,
@@ -70,19 +114,36 @@ class SpeechRecognition(nn.Module):
         return self.final_fc(x), (hn, cn)
 
     # Model Summarization        
-    def print_model_summary(self):
-        print(f"{'='*40}\n{'Model Summary':^40}\n{'='*40}")
-        print("{:<25} {:<25} {:<20}".format("Layer", "Param #", "Shape"))
-        print("="*75)
+    def print_detailed_summary(self):
+        print(f"{'='*80}\n{'Model Summary':^80}\n{'='*80}")
 
+        header_format = "{:<5} | {:<30} | {:<20} | {:<10}"
+        row_format = "{:<5} | {:<30} | {:<20} | {:<10}"
+
+        print(header_format.format("No.", "Layer", "Module", "Parameters"))
+        print('='*80)
+
+        counter = 1
         total_params = 0
-        for name, param in self.named_parameters():
-            if param.requires_grad:
-                param_size = param.size()
-                total_params += param.numel()
-                print(f"{name:<25} {param.numel():<25} {str(param_size):<20}")
+        for name, module in self.named_children():
+            params = sum(p.numel() for p in module.parameters())
+            total_params += params
+            clean_name = f"model.{name}".replace('\t', '').replace(' ', '') 
+            print(row_format.format(counter, clean_name, module.__class__.__name__, params))
 
-        print("="*75)
-        print(f"Total Trainable Params: {total_params} ~ {round(total_params / 1e6, 1)}M")
+            if hasattr(module, 'named_children'):
+                for child_name, child_module in module.named_children():
+                    params_child = sum(p.numel() for p in child_module.parameters())
+                    total_params += params_child
+                    full_child_name = f"model.{name}.{child_name}".replace('\t', '').replace(' ', '') 
+                    print(row_format.format('', full_child_name, child_module.__class__.__name__, params_child))
+            counter += 1
+
+        print('='*80)
+        print(f"Total Trainable Params: {total_params} ~ {round(total_params / 1e6, 2)}M")
+        print('='*80)
+
+
+
 
 

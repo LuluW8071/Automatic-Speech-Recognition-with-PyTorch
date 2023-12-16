@@ -8,6 +8,21 @@ from utils import TextProcess  # Comment this before running engine.py after tra
 
 # NOTE: add time stretch
 class SpecAugment(nn.Module):
+    """
+    Parameters:
+        - rate (float): The probability of applying SpecAugment.
+        - policy (int): The augmentation policy to use (1, 2, or 3).
+        - freq_mask (int): Maximum frequency masking parameter.
+        - time_mask (int): Maximum time masking parameter.
+
+    Methods:
+        - forward(x): Applies the specified augmentation policy to the input tensor x.
+
+    Augmentation Policies:
+        Policy 1. Applies time masking with a given probability.
+        Policy 2. Applies frequency masking with a given probability.
+        Policy 3. Applies both time masking and frequency masking with the same probability.
+    """
 
     def __init__(self, rate, policy=3, freq_mask=15, time_mask=35):
         super(SpecAugment, self).__init__()
@@ -52,7 +67,16 @@ class SpecAugment(nn.Module):
 
 
 class LogMelSpec(nn.Module):
+    """
+    Args:
+        sample_rate (int): The sample rate of the audio signal.
+        n_mels (int): The number of mel filters.
+        win_length (int): The window length in milliseconds.
+        hop_length (int): The hop length in milliseconds.
 
+    Methods:
+        - forward(x): Applies the Mel Spectrogram transformation to the input tensor.
+    """
     def __init__(self, sample_rate=8000, n_mels=128, win_length=160, hop_length=80):
         super(LogMelSpec, self).__init__()
         self.transform = torchaudio.transforms.MelSpectrogram(
@@ -70,7 +94,28 @@ def get_featurizer(sample_rate, n_feats=81):
 
 
 class Data(torch.utils.data.Dataset):
+    """
+    Parameters:
+        - json_path (str): Path to the JSON file containing audio file information.
+        - sample_rate (int): Sample rate of the audio data.
+        - n_feats (int): Number of mel spectrogram features.
+        - specaug_rate (float): Rate of applying SpecAugment data augmentation.
+        - specaug_policy (int): Policy for SpecAugment augmentation (1, 2, or 3).
+        - time_mask (int): Maximum time masking parameter for SpecAugment.
+        - freq_mask (int): Maximum frequency masking parameter for SpecAugment.
+        - valid (bool): If True, the dataset is for validation (no data augmentation).
+        - shuffle (bool): If True, shuffle the dataset.
+        - text_to_int (bool): If True, convert text labels to integer sequences.
+        - log_ex (bool): If True, log exceptions during data loading.
 
+    Methods:
+        - __len__(): Returns the number of samples in the dataset.
+        - __getitem__(idx): Retrieves the specified sample from the dataset.
+
+    Usage Example:
+        data = Data(json_path='data.json', sample_rate=8000, n_feats=81, specaug_rate=0.5,
+                    specaug_policy=3, time_mask=70, freq_mask=15, valid=False, shuffle=True)
+    """
     # this makes it easier to be ovveride in argparse
     parameters = {
         "sample_rate": 8000, "n_feats": 81,
@@ -130,7 +175,6 @@ class Data(torch.utils.data.Dataset):
     def describe(self):
         return self.data.describe()
 
-import time 
 def collate_fn_padd(data):
     '''
     Padds batch of variable length

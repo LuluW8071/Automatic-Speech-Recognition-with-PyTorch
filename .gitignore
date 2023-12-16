@@ -21,3 +21,5 @@ cpu_env/
 optimized_model.ckpt
 3glm.arpa
 audio_temp
+
+demo/transcript.txt
