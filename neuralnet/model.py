@@ -4,6 +4,25 @@ from torch.nn import functional as F
 
 
 class ActDropNormCNN1D(nn.Module):
+    """
+    1D CNN with activation, dropout, and layer normalization.
+
+    Parameters:
+        - in_channels (int): Number of input channels.
+        - keep_shape (bool): If True, preserves the shape of the input tensor.
+
+    Input Shape:
+        (batch_size, in_channels, sequence_length)
+
+    Output Shape:
+        (batch_size, in_channels, sequence_length)
+
+    Architecture:
+        - Conv1d with kernel size 10 and stride 2.
+        - GELU activation function.
+        - Dropout with probability 0.1.
+        - LayerNorm normalization.
+    """
     def __init__(self, n_feats, dropout, keep_shape=False):
         super(ActDropNormCNN1D, self).__init__()
         self.dropout = nn.Dropout(dropout)
@@ -21,6 +40,31 @@ class ActDropNormCNN1D(nn.Module):
 
 
 class SpeechRecognition(nn.Module):
+    """
+    Speech Recognition model with CNN and LSTM layers.
+
+    Hyperparameters:
+        - num_classes (int): Number of output classes.
+        - n_feats (int): Number of input features.
+        - dropout (float): Dropout probability.
+        - hidden_size (int): Size of the LSTM hidden layer.
+        - num_layers (int): Number of LSTM layers.
+
+    Input Shape:
+        (batch_size, 1, feature, time)
+
+    Output Shape:
+        - Logits: (time, batch_size, num_classes)
+        - Hidden State Tuple: (hn, cn)
+
+    Architecture:
+        - 1D CNN with activation, dropout, and layer normalization.
+        - Dense layers with linear, layer normalization, GELU activation, and dropout.
+        - Unidirectional LSTM layer.
+        - Layer normalization and dropout.
+        - Final fully connected layer.
+    """
+
     hyper_parameters = {
         "num_classes": 29,
         "n_feats": 81,
