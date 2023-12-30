@@ -65,8 +65,6 @@ if __name__ == "__main__":
                         help='percent of clips put into test.json instead of train.json')
     parser.add_argument('--convert', default=True, action='store_true',
                         help='says that the script should convert mp3 to wav')
-    parser.add_argument('--not-convert', dest='convert', action='store_false',
-                        help='says that the script should not convert mp3 to wav')
 
     args = parser.parse_args()
 

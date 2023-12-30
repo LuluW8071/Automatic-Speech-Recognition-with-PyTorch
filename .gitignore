@@ -7,6 +7,7 @@ scripts/__pycache__
 scripts/clips/
 scripts/test.json
 scripts/train.json
+scripts/common_voice_dataset
 
 neuralnet/__pycache__/
 neuralnet/tb_logs/
