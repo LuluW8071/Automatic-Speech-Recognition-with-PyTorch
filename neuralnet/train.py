@@ -3,6 +3,7 @@ import ast
 import torch
 from torch import nn
 import torch.optim as optim
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from pytorch_lightning import LightningModule, Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -40,7 +41,7 @@ class SpeechModule(LightningModule):
         hidden = self.model._init_hidden(bs)
         hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
         output, _ = self(spectrograms, (hn, c0))
-        output = torch.nn.functional.log_softmax(output, dim=2)
+        output = F.log_softmax(output, dim=2)
         loss = self.criterion(output, labels, input_lengths, label_lengths)
         return loss
 
@@ -95,7 +96,7 @@ def checkpoint_callback(args):
 
 
 def main(args):
-    seed_everything(42)  # For reproducibility
+    # seed_everything(42)  # For reproducibility
     h_params = SpeechRecognition.hyper_parameters
     h_params.update(args.hparams_override)
     model = SpeechRecognition(**h_params)
