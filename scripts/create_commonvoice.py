@@ -14,7 +14,7 @@ def main(args):
         os.makedirs(clips_directory)
     
     with open(args.file_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=',')
+        reader = csv.DictReader(csvfile, delimiter='\t')
         length = sum(1 for _ in reader)  # Count the number of lines in the CSV
         csvfile.seek(0)
         index = 1
@@ -33,29 +33,26 @@ def main(args):
                 src = os.path.join(args.audio, file_name)
                 dst = os.path.join(args.save_json_path, 'clips', filename)
 
-                # Load the MP3 audio
+                # # Load the MP3 audio
                 sound = AudioSegment.from_mp3(src)
-                duration_in_seconds = len(sound) / 1000
                 
-                if duration_in_seconds <= 30:
-                    if args.convert:
-                        data.append({
-                            "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
-                            "text": text
-                        })
-                    
-                        print(f"Converting file {index}/{length} to wav ------------ ({(index/length)*100:.3f}%)", end="\r")
+                if args.convert:
+                    data.append({
+                        "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
+                        "text": text
+                    })
+                
+                    print(f"Converting file {index}/{length} to wav ------------ ({(index/length)*100:.3f}%)", end="\r")
 
-                        sound = sound.set_frame_rate(32000)  # Set frame rate (bitrate) to 128 kbps
-                        sound.export(dst, format="wav")  # Export the modified sound to wav
-                        index = index + 1
-                    else:
-                        data.append({
-                            "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
-                            "text": text
-                        })
+                    sound = sound.set_frame_rate(16000)  # Set sample rate to 8000hz
+                    sound.export(dst, format="wav")  # Export the modified sound to wav
+                    index = index + 1
                 else:
-                    print(f"Skipping file {index}/{length}: Duration > 30 seconds - {filename}")
+                    data.append({
+                        "key": os.path.join(args.save_json_path, 'clips', filename).replace('\\', '/'),
+                        "text": text
+                    })
+
             i += 1
 
     random.shuffle(data)
@@ -88,8 +85,6 @@ if __name__ == "__main__":
                         help='percent of clips put into test.json instead of train.json')
     parser.add_argument('--convert', default=True, action='store_true',
                         help='says that the script should convert mp3 to wav')
-    parser.add_argument('--not-convert', dest='convert', action='store_false',
-                        help='says that the script should not convert mp3 to wav')
 
     args = parser.parse_args()
 
