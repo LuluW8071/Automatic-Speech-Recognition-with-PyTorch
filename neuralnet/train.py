@@ -5,7 +5,7 @@ from torch import nn
 import torch.optim as optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from pytorch_lightning import LightningModule, Trainer, seed_everything
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from argparse import ArgumentParser
@@ -96,7 +96,6 @@ def checkpoint_callback(args):
 
 
 def main(args):
-    # seed_everything(42)  # For reproducibility
     h_params = SpeechRecognition.hyper_parameters
     h_params.update(args.hparams_override)
     model = SpeechRecognition(**h_params)
