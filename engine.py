@@ -68,7 +68,7 @@ class SpeechRecognitionEngine:
         return fname
 
     def predict(self, audio):
-        with torch.no_grad():
+        with torch.inference_mode():
             fname = self.save(audio)
             waveform, _ = torchaudio.load(fname)  # don't normalize on train
             log_mel = self.featurizer(waveform).unsqueeze(1)
@@ -116,7 +116,7 @@ class DemoAction:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="demoing the speech recognition engine in terminal.")
     parser.add_argument('--model_file', type=str, default=None, required=True,
-                        help='optimized file to load. use optimize_graph.py')
+                        help='optimized file to load. use freeze_model.py')
     parser.add_argument('--ken_lm_file', type=str, default=None, required=False,
                         help='If you have an ngram lm use to decode')
 
