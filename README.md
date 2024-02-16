@@ -49,6 +49,11 @@ PROJECT_NAME = "###"
 ```
 
 ### 3. Train Datasets
+The pretrained model checkpoints under `1000 hrs of Mozilla Common Voice Datasets` along with the images of `train/validation loss curves` is on the link below:
+#### [Click here to download pre trained model](https://mega.nz/folder/Lnxj3YCJ#Na6Nc1m4nz6jiSWTatfKJQ)
+Just use `--load_model_from` flag to set the path of pre-trained model if you want to continue the training further or else use `freeze_model.py` to finilize the model checkpoint for ready-use to load on speech `engine.py`.
+
+To train your own model use the command below:
 ```bash
 py train.py --train_file "path\train.json" --valid_file "path\test.json" --save_model_path 'save\model\path'  --valid_file <value> --batch_size <value> --epochs <value>
 ```
