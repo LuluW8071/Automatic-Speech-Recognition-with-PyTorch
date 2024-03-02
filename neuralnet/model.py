@@ -92,7 +92,7 @@ class SpeechRecognition(nn.Module):
             nn.Dropout(dropout),
         )
         self.lstm = nn.LSTM(input_size=128, hidden_size=hidden_size,
-                            num_layers=num_layers, dropout=0.0,
+                            num_layers=num_layers, dropout=0,
                             bidirectional=False)
         self.layer_norm2 = nn.LayerNorm(hidden_size)
         self.dropout2 = nn.Dropout(dropout)

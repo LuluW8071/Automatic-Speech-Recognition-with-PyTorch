@@ -24,7 +24,7 @@ class SpecAugment(nn.Module):
         Policy 3. Applies both time masking and frequency masking with the same probability.
     """
 
-    def __init__(self, rate, policy=3, freq_mask=15, time_mask=35):
+    def __init__(self, rate, policy=3, freq_mask=30, time_mask=100):
         super(SpecAugment, self).__init__()
 
         self.rate = rate
@@ -77,7 +77,7 @@ class LogMelSpec(nn.Module):
     Methods:
         - forward(x): Applies the Mel Spectrogram transformation to the input tensor.
     """
-    def __init__(self, sample_rate=8000, n_mels=128, win_length=160, hop_length=80):
+    def __init__(self, sample_rate=16000, n_mels=128, win_length=160, hop_length=80):
         super(LogMelSpec, self).__init__()
         self.transform = torchaudio.transforms.MelSpectrogram(
                             sample_rate=sample_rate, n_mels=n_mels,
@@ -118,9 +118,9 @@ class Data(torch.utils.data.Dataset):
     """
     # this makes it easier to be ovveride in argparse
     parameters = {
-        "sample_rate": 8000, "n_feats": 81,
+        "sample_rate": 16000, "n_feats": 81,
         "specaug_rate": 0.5, "specaug_policy": 3,
-        "time_mask": 70, "freq_mask": 15 
+        "time_mask": 100, "freq_mask": 30 
     }
 
     def __init__(self, json_path, sample_rate, n_feats, specaug_rate, specaug_policy,

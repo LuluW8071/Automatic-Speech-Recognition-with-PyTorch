@@ -161,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument("--hparams_override", default="{}", type=str, required=False,
 		help='override the hyper parameters, should be in form of dict. ie. {"attention_layers": 16 }')
     parser.add_argument("--dparams_override", default="{}", type=str, required=False,
-		help='override the data parameters, should be in form of dict. ie. {"sample_rate": 8000 }')
+		help='override the data parameters, should be in form of dict. ie. {"sample_rate": 16000 }')
 
     args = parser.parse_args()
     args.hparams_override = ast.literal_eval(args.hparams_override)

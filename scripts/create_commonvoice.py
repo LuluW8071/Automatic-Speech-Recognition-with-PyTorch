@@ -33,7 +33,12 @@ def main(args):
                 src = os.path.join(args.audio, file_name)
                 dst = os.path.join(args.save_json_path, 'clips', filename)
 
-                # # Load the MP3 audio
+                #  # Check if the source file exists
+                if not os.path.exists(src):
+                    print(f"File '{src}' not found. Skipping.",end='\r')
+                    continue
+                
+                # Load the MP3 audio
                 sound = AudioSegment.from_mp3(src)
                 
                 if args.convert:
