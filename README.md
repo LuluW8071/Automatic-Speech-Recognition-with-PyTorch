@@ -125,10 +125,10 @@ py freeze_model.py --model_checkpoint "path/model/speechrecognition.ckpt" --save
 ### 9. Engine & Demo
 Use `engine.py` to run transription demo in terminal.
 ```bash
-py engine.py --file_path "path/model/speechrecognition.ckpt" --save_txt_path "path/to/nglm.arpa or path/to/nglm.bin"
+py engine.py --file_path "path/model/speechrecognition.ckpt" --ken_lm_file "path/to/nglm.arpa or path/to/nglm.bin"
 ```
 
 Use `demo.py` to run transription demo in webpage.
 ```bash
-py demo.py --file_path "path/model/speechrecognition.ckpt" --save_txt_path "path/to/nglm.arpa or path/to/nglm.bin"
+py demo.py --file_path "path/model/speechrecognition.ckpt" --ken_lm_file "path/to/nglm.arpa or path/to/nglm.bin"
 ```
