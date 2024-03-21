@@ -49,7 +49,7 @@ def main(args):
                 
                     print(f"Converting file {index}/{length} to wav ------------ ({(index/length)*100:.3f}%)", end="\r")
 
-                    sound = sound.set_frame_rate(16000)  # Set sample rate to 8000hz
+                    sound = sound.set_frame_rate(8000)  # Set sample rate to 8000hz
                     sound.export(dst, format="wav")  # Export the modified sound to wav
                     index = index + 1
                 else:
