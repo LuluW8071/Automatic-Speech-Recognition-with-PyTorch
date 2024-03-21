@@ -37,7 +37,7 @@ Alternatively, if conversion isn't needed, you can use `create_jsons_only.py`.
 
 ##### JSON Format
 
-        ```bash
+        
         [
             {   
                 "key": "/path/to/audio/speech.wav", 
@@ -45,7 +45,6 @@ Alternatively, if conversion isn't needed, you can use `create_jsons_only.py`.
             },
             ......
         ]
-        ```
 
 #### 2. Comet-ML API Integration
 
