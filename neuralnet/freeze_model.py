@@ -1,4 +1,4 @@
-"""Freezes and optimize the model. Use after training."""
+"""Freezes and optimize the trained model checkpoint for inference. Use after training."""
 
 import argparse
 import torch
@@ -7,6 +7,15 @@ from collections import OrderedDict
 import os 
 
 def trace(model):
+    """
+    Traces the model for optimization.
+
+    Args:
+        model (torch.nn.Module): Model to be traced.
+
+    Returns:
+        torch.jit.ScriptModule: Traced model.
+    """
     model.eval()
     x = torch.rand(1, 81, 300)
     hidden = model._init_hidden(1)
@@ -14,7 +23,13 @@ def trace(model):
     return traced
 
 def main(args):
-    print("loading model from", args.model_checkpoint)
+        """
+    Main function to freeze and optimize the model.
+
+    Args:
+        args (argparse.Namespace): Command-line arguments.
+    """
+    print("Loading model from", args.model_checkpoint)
     checkpoint = torch.load(args.model_checkpoint, map_location=torch.device('cpu'))
     h_params = SpeechRecognition.hyper_parameters
     model = SpeechRecognition(**h_params)
@@ -42,4 +57,5 @@ if __name__ == "__main__":
                         help='path to save optimized model')
 
     args = parser.parse_args()
+    
     main(args)

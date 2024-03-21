@@ -119,7 +119,7 @@ class Data(torch.utils.data.Dataset):
 
     # this makes it easier to be overide in argparse
     parameters = {
-        "sample_rate": 16000, 
+        "sample_rate": 8000, 
         "n_feats": 81,
         "specaug_rate": 0.5, 
         "specaug_policy": 3,

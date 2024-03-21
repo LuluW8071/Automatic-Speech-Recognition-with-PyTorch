@@ -31,7 +31,6 @@ class ActDropNormCNN1D(nn.Module):
 
     def forward(self, x):
         x = x.transpose(1, 2)
-        # x = self.norm(self.dropout(F.gelu(x)))
         x = self.dropout(F.gelu(self.norm(x)))
         if self.keep_shape:
             return x.transpose(1, 2)
@@ -79,18 +78,15 @@ class SpeechRecognition(nn.Module):
         self.hidden_size = hidden_size
         self.cnn = nn.Sequential(
             nn.Conv1d(n_feats, n_feats, 10, 2, padding=10//2),
-            ActDropNormCNN1D(n_feats, dropout),
-        )
-        self.dense = nn.Sequential(
-            nn.Linear(n_feats, 128),
-            nn.LayerNorm(128),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(128, 128),
-            nn.LayerNorm(128),
-            nn.GELU(),
-            nn.Dropout(dropout),
-        )
+            ActDropNormCNN1D(n_feats, dropout))
+        self.dense = nn.Sequential(nn.Linear(n_feats, 128),
+                                   nn.LayerNorm(128),
+                                   nn.GELU(),
+                                   nn.Dropout(dropout),
+                                   nn.Linear(128, 128),
+                                   nn.LayerNorm(128),
+                                   nn.GELU(),
+                                   nn.Dropout(dropout))
         self.lstm = nn.LSTM(input_size=128, hidden_size=hidden_size,
                             num_layers=num_layers, dropout=0,
                             bidirectional=False)
@@ -109,8 +105,7 @@ class SpeechRecognition(nn.Module):
         x = self.dense(x)  # batch, time, feature
         x = x.transpose(0, 1)  # time, batch, feature
         out, (hn, cn) = self.lstm(x, hidden)
-        x = self.dropout2(F.gelu(self.layer_norm2(out))
-                          )  # (time, batch, n_class)
+        x = self.dropout2(F.gelu(self.layer_norm2(out)))  # (time, batch, n_class)
         return self.final_fc(x), (hn, cn)
 
     # Model Summarization        
@@ -142,8 +137,3 @@ class SpeechRecognition(nn.Module):
         print('='*80)
         print(f"Total Trainable Params: {total_params} ~ {round(total_params / 1e6, 2)}M")
         print('='*80)
-
-
-
-
-

@@ -16,17 +16,35 @@ from comet_ml import Experiment
 from config import API_KEY, PROJECT_NAME
 
 class SpeechModule(LightningModule):
+    """
+    PyTorch Lightning Module for training and evaluating the speech recognition model.
+
+    Attributes:
+        model (nn.Module): The speech recognition model.
+        criterion (nn.CTCLoss): The CTCLoss criterion.
+        args (argparse.Namespace): Command-line arguments.
+        experiment (comet_ml.Experiment): Comet.ml Experiment object for logging.
+    """
 
     def __init__(self, model, args):
+        """
+        Initializes the SpeechModule.
+
+        Args:
+            model (nn.Module): The speech recognition model.
+            args (argparse.Namespace): Command-line arguments.
+        """
         super(SpeechModule, self).__init__()
         self.model = model
         self.criterion = nn.CTCLoss(blank=28, zero_infinity=True)
         self.args = args
         self.experiment = Experiment(api_key=API_KEY, project_name=PROJECT_NAME)
 
+    # Define the forward pass
     def forward(self, x, hidden):
         return self.model(x, hidden)
 
+    # Configure optimizers
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate)
         scheduler = {
@@ -35,6 +53,7 @@ class SpeechModule(LightningModule):
         }
         return [optimizer], [scheduler]
 
+    # Perform a single optimization step
     def step(self, batch):
         spectrograms, labels, input_lengths, label_lengths = batch
         bs = spectrograms.shape[0]
@@ -45,6 +64,7 @@ class SpeechModule(LightningModule):
         loss = self.criterion(output, labels, input_lengths, label_lengths)
         return loss
 
+    # Perform a training step
     def training_step(self, batch, batch_idx):
         loss = self.step(batch)
         logs = {'loss': loss, 'lr': self.trainer.optimizers[0].param_groups[0]['lr']}
@@ -54,6 +74,7 @@ class SpeechModule(LightningModule):
 
         return loss
 
+    # Create the training dataloader
     def train_dataloader(self):
         d_params = Data.parameters
         d_params.update(self.args.dparams_override)
@@ -64,16 +85,19 @@ class SpeechModule(LightningModule):
                           pin_memory=True,
                           collate_fn=collate_fn_padd)
 
+    # Perform a validation step
     def validation_step(self, batch, batch_idx):
         loss = self.step(batch)
         return {'val_loss': loss}
 
+    # Calculate validation metrics at the end of an epoch
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         self.log('val_loss', avg_loss, prog_bar=True)
         # Log validation loss to Comet.ml
         self.experiment.log_metric('val_loss', avg_loss.item(), step=self.global_step)
 
+    # Create the validation dataloader
     def val_dataloader(self):
         d_params = Data.parameters
         d_params.update(self.args.dparams_override)
@@ -86,6 +110,15 @@ class SpeechModule(LightningModule):
 
 
 def checkpoint_callback(args):
+    """
+    Callback function to configure the ModelCheckpoint callback.
+
+    Args:
+        args (argparse.Namespace): Command-line arguments.
+
+    Returns:
+        ModelCheckpoint: Configured ModelCheckpoint callback.
+    """
     return ModelCheckpoint(
         filename='best_model',
         monitor='val_loss',
@@ -96,6 +129,12 @@ def checkpoint_callback(args):
 
 
 def main(args):
+    """
+    Main function to train the speech recognition model.
+
+    Args:
+        args (argparse.Namespace): Command-line arguments.
+    """
     h_params = SpeechRecognition.hyper_parameters
     h_params.update(args.hparams_override)
     model = SpeechRecognition(**h_params)
@@ -167,7 +206,7 @@ if __name__ == "__main__":
     args.hparams_override = ast.literal_eval(args.hparams_override)
     args.dparams_override = ast.literal_eval(args.dparams_override)
 
-
+    # Create the directory for saving the model if specified
     if args.save_model_path:
        if not os.path.isdir(os.path.dirname(args.save_model_path)):
            raise Exception("the directory for path {} does not exist".format(args.save_model_path))
