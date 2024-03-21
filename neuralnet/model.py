@@ -100,12 +100,12 @@ class SpeechRecognition(nn.Module):
                 torch.zeros(n*1, batch_size, hs))
 
     def forward(self, x, hidden):
-        x = x.squeeze(1)  # batch, feature, time
-        x = self.cnn(x)  # batch, time, feature
-        x = self.dense(x)  # batch, time, feature
-        x = x.transpose(0, 1)  # time, batch, feature
+        x = x.squeeze(1)                                    # batch, feature, time
+        x = self.cnn(x)                                     # batch, time, feature
+        x = self.dense(x)                                   # batch, time, feature
+        x = x.transpose(0, 1)                               # time, batch, feature
         out, (hn, cn) = self.lstm(x, hidden)
-        x = self.dropout2(F.gelu(self.layer_norm2(out)))  # (time, batch, n_class)
+        x = self.dropout2(F.gelu(self.layer_norm2(out)))    # (time, batch, n_class)
         return self.final_fc(x), (hn, cn)
 
     # Model Summarization        
