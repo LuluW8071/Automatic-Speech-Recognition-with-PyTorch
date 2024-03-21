@@ -1,7 +1,13 @@
 import torch
 
 class TextProcess:
+	"""
+    Class to handle text processing for speech recognition.
+    """
 	def __init__(self):
+		"""
+        Initializes the TextProcess class with character map and index map.
+        """
 		char_map_str = """
 		' 0
 		<SPACE> 1
@@ -41,7 +47,16 @@ class TextProcess:
 		self.index_map[1] = ' '
 
 	def text_to_int_sequence(self, text):
-		""" Use a character map and convert text to an integer sequence """
+		"""
+		Map the characters and convert text to an integer sequence
+
+        Args:
+            text (str): Input text to be converted.
+
+        Returns:
+            list: Integer sequence representing the input text.
+        """
+		
 		int_sequence = []
 		for c in text:
 			if c == ' ' or '.' or ',':
@@ -52,16 +67,38 @@ class TextProcess:
 		return int_sequence
 
 	def int_to_text_sequence(self, labels):
-		""" Use a character map and convert integer labels to an text sequence """
+		"""
+        Convert integer labels to a text sequence using a character map.
+
+        Args:
+            labels (list): List of integer labels to be converted.
+
+        Returns:
+            str: Text sequence representing the integer labels.
+        """
 		string = []
 		for i in labels:
 			string.append(self.index_map[i])
 		return ''.join(string).replace('<SPACE>', ' ')
 
-
+# Initialize TextProcess for text processing
 textprocess = TextProcess()
 
+# NOTE: GreedyDecoder function for decoding model output using a greedy approach.
 def GreedyDecoder(output, labels, label_lengths, blank_label=28, collapse_repeated=True):
+	"""
+    Perform greedy decoding to convert model output to text sequences.
+
+    Args:
+        output (torch.Tensor): Model output tensor.
+        labels (torch.Tensor): Ground truth labels tensor.
+        label_lengths (list): List of label lengths.
+        blank_label (int): Index of the blank label (default: 28).
+        collapse_repeated (bool): Whether to collapse repeated characters (default: True).
+
+    Returns:
+        tuple: Tuple containing decoded text sequences and ground truth targets.
+    """
 	arg_maxes = torch.argmax(output, dim=2)
 	decodes = []
 	targets = []

@@ -1,6 +1,16 @@
 import numpy as np
 
 def avg_wer(wer_scores, combined_ref_len):
+    """
+    Calculate the average Word Error Rate (WER).
+
+    Args:
+        wer_scores (list): List of individual WER scores.
+        combined_ref_len (int): Combined length of reference sentences.
+
+    Returns:
+        float: Average WER.
+    """
     return float(sum(wer_scores)) / float(combined_ref_len)
 
 
@@ -11,11 +21,20 @@ def _levenshtein_distance(ref, hyp):
     deletions) required to change one word into the other. We can naturally
     extend the edits to word level when calculate levenshtein disctance for
     two sentences.
+
+    Compute the Levenshtein distance between two sequences.
+
+    Args:
+        ref (list): Reference sequence.
+        hyp (list): Hypothesis sequence.
+
+    Returns:
+        int: Levenshtein distance.
     """
     m = len(ref)
     n = len(hyp)
 
-    # special case
+    # Special cases
     if ref == hyp:
         return 0
     if m == 0:
@@ -27,14 +46,14 @@ def _levenshtein_distance(ref, hyp):
         ref, hyp = hyp, ref
         m, n = n, m
 
-    # use O(min(m, n)) space
+    # Use O(min(m, n)) space
     distance = np.zeros((2, n + 1), dtype=np.int32)
 
-    # initialize distance matrix
+    # Initialize distance matrix
     for j in range(0,n + 1):
         distance[0][j] = j
 
-    # calculate levenshtein distance
+    # Calculate Levenshtein distance
     for i in range(1, m + 1):
         prev_row_idx = (i - 1) % 2
         cur_row_idx = i % 2
@@ -52,18 +71,17 @@ def _levenshtein_distance(ref, hyp):
 
 
 def word_errors(reference, hypothesis, ignore_case=False, delimiter=' '):
-    """Compute the levenshtein distance between reference sequence and
-    hypothesis sequence in word-level.
-    :param reference: The reference sentence.
-    :type reference: basestring
-    :param hypothesis: The hypothesis sentence.
-    :type hypothesis: basestring
-    :param ignore_case: Whether case-sensitive or not.
-    :type ignore_case: bool
-    :param delimiter: Delimiter of input sentences.
-    :type delimiter: char
-    :return: Levenshtein distance and word number of reference sentence.
-    :rtype: list
+    """
+    Compute the Levenshtein distance between reference and hypothesis sequences in word-level.
+
+    Args:
+        reference (str): The reference sentence.
+        hypothesis (str): The hypothesis sentence.
+        ignore_case (bool): Whether case-sensitive or not.
+        delimiter (str): Delimiter of input sentences.
+
+    Returns:
+        tuple: Levenshtein distance and number of words in the reference.
     """
     if ignore_case == True:
         reference = reference.lower()
@@ -77,18 +95,20 @@ def word_errors(reference, hypothesis, ignore_case=False, delimiter=' '):
 
 
 def char_errors(reference, hypothesis, ignore_case=False, remove_space=False):
-    """Compute the levenshtein distance between reference sequence and
-    hypothesis sequence in char-level.
-    :param reference: The reference sentence.
-    :type reference: basestring
-    :param hypothesis: The hypothesis sentence.
-    :type hypothesis: basestring
-    :param ignore_case: Whether case-sensitive or not.
-    :type ignore_case: bool
-    :param remove_space: Whether remove internal space characters
-    :type remove_space: bool
-    :return: Levenshtein distance and length of reference sentence.
-    :rtype: list
+    """
+    Calculate Character Error Rate (CER).
+
+    Args:
+        reference (str): The reference sentence.
+        hypothesis (str): The hypothesis sentence.
+        ignore_case (bool): Whether case-sensitive or not.
+        remove_space (bool): Whether to remove internal space characters.
+
+    Returns:
+        float: Character Error Rate.
+
+    Raises:
+        ValueError: If the reference length is zero.
     """
     if ignore_case == True:
         reference = reference.lower()
@@ -106,29 +126,34 @@ def char_errors(reference, hypothesis, ignore_case=False, remove_space=False):
 
 
 def wer(reference, hypothesis, ignore_case=False, delimiter=' '):
-    """Calculate word error rate (WER). WER compares reference text and
-    hypothesis text in word-level. WER is defined as:
+    """
+    Calculate Word Error Rate (WER).
+
+    WER compares reference text and hypothesis text in word-level. WER is defined as:
+
     .. math::
         WER = (Sw + Dw + Iw) / Nw
-    where
-    .. code-block:: text
-        Sw is the number of words subsituted,
+
+    where:
+        Sw is the number of words substituted,
         Dw is the number of words deleted,
         Iw is the number of words inserted,
-        Nw is the number of words in the reference
-    We can use levenshtein distance to calculate WER. Please draw an attention
-    that empty items will be removed when splitting sentences by delimiter.
-    :param reference: The reference sentence.
-    :type reference: basestring
-    :param hypothesis: The hypothesis sentence.
-    :type hypothesis: basestring
-    :param ignore_case: Whether case-sensitive or not.
-    :type ignore_case: bool
-    :param delimiter: Delimiter of input sentences.
-    :type delimiter: char
-    :return: Word error rate.
-    :rtype: float
-    :raises ValueError: If word number of reference is zero.
+        Nw is the number of words in the reference.
+
+    We can use Levenshtein distance to calculate WER. Please note that empty items will be removed 
+    when splitting sentences by the specified delimiter.
+
+    Args:
+        reference (str): The reference sentence.
+        hypothesis (str): The hypothesis sentence.
+        ignore_case (bool): Whether case-sensitive or not.
+        delimiter (str): Delimiter of input sentences.
+
+    Returns:
+        float: Word error rate.
+
+    Raises:
+        ValueError: If the number of words in the reference is zero.
     """
     edit_distance, ref_len = word_errors(reference, hypothesis, ignore_case,
                                          delimiter)
@@ -141,31 +166,35 @@ def wer(reference, hypothesis, ignore_case=False, delimiter=' '):
 
 
 def cer(reference, hypothesis, ignore_case=False, remove_space=False):
-    """Calculate charactor error rate (CER). CER compares reference text and
-    hypothesis text in char-level. CER is defined as:
+    """
+    Calculate Character Error Rate (CER).
+
+    CER compares reference text and hypothesis text in character-level. CER is defined as:
+
     .. math::
         CER = (Sc + Dc + Ic) / Nc
-    where
-    .. code-block:: text
+
+    where:
         Sc is the number of characters substituted,
         Dc is the number of characters deleted,
-        Ic is the number of characters inserted
-        Nc is the number of characters in the reference
-    We can use levenshtein distance to calculate CER. Chinese input should be
-    encoded to unicode. Please draw an attention that the leading and tailing
-    space characters will be truncated and multiple consecutive space
-    characters in a sentence will be replaced by one space character.
-    :param reference: The reference sentence.
-    :type reference: basestring
-    :param hypothesis: The hypothesis sentence.
-    :type hypothesis: basestring
-    :param ignore_case: Whether case-sensitive or not.
-    :type ignore_case: bool
-    :param remove_space: Whether remove internal space characters
-    :type remove_space: bool
-    :return: Character error rate.
-    :rtype: float
-    :raises ValueError: If the reference length is zero.
+        Ic is the number of characters inserted,
+        Nc is the number of characters in the reference.
+
+    Levenshtein distance is used to calculate CER. Chinese input should be encoded to unicode.
+    Please note that the leading and trailing space characters will be truncated, and multiple 
+    consecutive space characters in a sentence will be replaced by one space character.
+
+    Args:
+        reference (str): The reference sentence.
+        hypothesis (str): The hypothesis sentence.
+        ignore_case (bool): Whether case-sensitive or not.
+        remove_space (bool): Whether to remove internal space characters.
+
+    Returns:
+        float: Character error rate.
+
+    Raises:
+        ValueError: If the length of the reference is zero.
     """
     edit_distance, ref_len = char_errors(reference, hypothesis, ignore_case,
                                          remove_space)
@@ -175,3 +204,4 @@ def cer(reference, hypothesis, ignore_case=False, remove_space=False):
 
     cer = float(edit_distance) / ref_len
     return cer
+    

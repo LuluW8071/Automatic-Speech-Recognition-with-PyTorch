@@ -116,11 +116,15 @@ class Data(torch.utils.data.Dataset):
         data = Data(json_path='data.json', sample_rate=8000, n_feats=81, specaug_rate=0.5,
                     specaug_policy=3, time_mask=70, freq_mask=15, valid=False, shuffle=True)
     """
-    # this makes it easier to be ovveride in argparse
+
+    # this makes it easier to be overide in argparse
     parameters = {
-        "sample_rate": 16000, "n_feats": 81,
-        "specaug_rate": 0.5, "specaug_policy": 3,
-        "time_mask": 100, "freq_mask": 30 
+        "sample_rate": 16000, 
+        "n_feats": 81,
+        "specaug_rate": 0.5, 
+        "specaug_policy": 3,
+        "time_mask": 100, 
+        "freq_mask": 30 
     }
 
     def __init__(self, json_path, sample_rate, n_feats, specaug_rate, specaug_policy,
@@ -176,12 +180,12 @@ class Data(torch.utils.data.Dataset):
         return self.data.describe()
 
 def collate_fn_padd(data):
-    '''
+    """
     Padds batch of variable length
 
     note: it converts things ToTensor manually here since the ToTensor transform
     assume it takes in images rather than arbitrary tensors.
-    '''
+    """
     
     # print(data)
     # delay[1000]
