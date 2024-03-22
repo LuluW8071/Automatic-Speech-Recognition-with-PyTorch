@@ -36,8 +36,7 @@ py create_commonvoice.py --file_path "file_path\to\.tsv" --save_json_path "save\
 Alternatively, if conversion isn't needed, you can use `create_jsons_only.py`.
 
 ##### JSON Format
-
-        
+ 
         [
             {   
                 "key": "/path/to/audio/speech.wav", 
