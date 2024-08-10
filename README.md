@@ -6,6 +6,9 @@ Welcome to the Speech Recognition system repository! This project implements a s
 
 This system combines cutting-edge deep learning techniques with traditional language modeling to transcribe spoken language accurately. Below, you'll find instructions on dependencies, terminal commands, and how to run various parts of the system.
 
+> [!IMPORTANT]  
+> The repo is outdated, [click here](https://github.com/LuluW8071/ASR-with-Speech-Sentiment-and-Text-Summarizer/tree/main/src/Automatic_Speech_Recognition) for updated ASR repo.
+
 ### Dependencies
 
 Before you begin, ensure you have the following dependencies installed:
