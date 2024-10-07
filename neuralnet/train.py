@@ -1,214 +1,217 @@
-import os
-import ast
+import comet_ml
+import pytorch_lightning as pl
+import os 
+import argparse
 import torch
-from torch import nn
+import torch.nn.functional as F
 import torch.optim as optim
-from torch.nn import functional as F
-from torch.utils.data import DataLoader
-from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
-from argparse import ArgumentParser
+from torch import nn
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
+from pytorch_lightning.loggers import CometLogger
+from torchmetrics.text import WordErrorRate, CharErrorRate
+
+# Load API
+from dotenv import load_dotenv
+load_dotenv()
+
+from dataset import SpeechDataModule
 from model import SpeechRecognition
-from dataset import Data, collate_fn_padd
+from utils import GreedyDecoder
 
-from comet_ml import Experiment
-from config import API_KEY, PROJECT_NAME
 
-class SpeechModule(LightningModule):
-    """
-    PyTorch Lightning Module for training and evaluating the speech recognition model.
-
-    Attributes:
-        model (nn.Module): The speech recognition model.
-        criterion (nn.CTCLoss): The CTCLoss criterion.
-        args (argparse.Namespace): Command-line arguments.
-        experiment (comet_ml.Experiment): Comet.ml Experiment object for logging.
-    """
-
+class ASRTrainer(pl.LightningModule):
     def __init__(self, model, args):
-        """
-        Initializes the SpeechModule.
-
-        Args:
-            model (nn.Module): The speech recognition model.
-            args (argparse.Namespace): Command-line arguments.
-        """
-        super(SpeechModule, self).__init__()
+        super(ASRTrainer, self).__init__()
         self.model = model
-        self.criterion = nn.CTCLoss(blank=28, zero_infinity=True)
         self.args = args
-        self.experiment = Experiment(api_key=API_KEY, project_name=PROJECT_NAME)
 
-    # Define the forward pass
+        # Metrics
+        self.losses = []
+        self.val_wer, self.val_cer = [], []
+        self.char_error_rate = CharErrorRate()
+        self.word_error_rate = WordErrorRate()
+        self.loss_fn = nn.CTCLoss(blank=28, zero_infinity=True)
+        
+        # Precompute sync_dist for distributed GPUs training
+        self.sync_dist = True if args.gpus > 1 else False
+
+        # Save the hyperparams of checkpoint
+        self.save_hyperparameters()
+
     def forward(self, x, hidden):
         return self.model(x, hidden)
-
-    # Configure optimizers
+    
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate)
-        scheduler = {
-            'scheduler': optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=6),
-            'monitor': 'val_loss',
-        }
-        return [optimizer], [scheduler]
+        optimizer = optim.AdamW(
+            self.model.parameters(),
+            lr=self.args.learning_rate,
+            betas=(0.9, 0.98),
+            eps=1e-8,
+            weight_decay=1e-5
+        )
 
-    # Perform a single optimization step
-    def step(self, batch):
+        scheduler = {
+            'scheduler': optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                optimizer,
+                T_0=5,            # Number of epochs for the first restart
+                T_mult=1.5,       # Factor to increase T_0 after each restart
+                eta_min=3e-5      # Minimum learning rate
+            ),
+            'monitor': 'val_loss'
+        }
+
+        return [optimizer], [scheduler]
+    
+    def _common_step(self, batch, batch_idx):
         spectrograms, labels, input_lengths, label_lengths = batch
         bs = spectrograms.shape[0]
         hidden = self.model._init_hidden(bs)
         hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
         output, _ = self(spectrograms, (hn, c0))
         output = F.log_softmax(output, dim=2)
-        loss = self.criterion(output, labels, input_lengths, label_lengths)
-        return loss
 
-    # Perform a training step
+        loss = self.loss_fn(output, labels, input_lengths, label_lengths)
+        return loss, output, labels, label_lengths
+    
     def training_step(self, batch, batch_idx):
-        loss = self.step(batch)
-        logs = {'loss': loss, 'lr': self.trainer.optimizers[0].param_groups[0]['lr']}
-        self.log_dict(logs)
-        # Log train loss to Comet.ml with the step argument
-        self.experiment.log_metric('train_loss', loss.item(), step=self.global_step)
+        loss, _, _, _ = self._common_step(batch, batch_idx)
 
+        self.log('train_loss', loss, on_step=True, on_epoch=False, prog_bar=True, logger=True, sync_dist=self.sync_dist)
         return loss
 
-    # Create the training dataloader
-    def train_dataloader(self):
-        d_params = Data.parameters
-        d_params.update(self.args.dparams_override)
-        train_dataset = Data(json_path=self.args.train_file, **d_params)
-        return DataLoader(dataset=train_dataset,
-                          batch_size=self.args.batch_size,
-                          num_workers=self.args.data_workers,
-                          pin_memory=True,
-                          collate_fn=collate_fn_padd)
-
-    # Perform a validation step
+    
     def validation_step(self, batch, batch_idx):
-        loss = self.step(batch)
+        loss, y_pred, labels, label_lengths = self._common_step(batch, batch_idx)
+        self.losses.append(loss)
+
+        # Greedy decoding
+        decoded_preds, decoded_targets = GreedyDecoder(y_pred.transpose(0, 1), labels, label_lengths)
+        
+        # Log final predictions
+        if batch_idx % 10 == 0:
+            log_targets = decoded_targets[-1]
+            log_preds = {"Preds": decoded_preds[-1]}
+            self.logger.experiment.log_text(text=log_targets, metadata=log_preds)
+
+        # Calculate metrics
+        cer_batch = self.char_error_rate(decoded_preds, decoded_targets)
+        wer_batch = self.word_error_rate(decoded_preds, decoded_targets)
+        
+        self.val_cer.append(cer_batch)
+        self.val_wer.append(wer_batch)
+
         return {'val_loss': loss}
 
-    # Calculate validation metrics at the end of an epoch
-    def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        self.log('val_loss', avg_loss, prog_bar=True)
-        # Log validation loss to Comet.ml
-        self.experiment.log_metric('val_loss', avg_loss.item(), step=self.global_step)
 
-    # Create the validation dataloader
-    def val_dataloader(self):
-        d_params = Data.parameters
-        d_params.update(self.args.dparams_override)
-        test_dataset = Data(json_path=self.args.valid_file, **d_params, valid=True)
-        return DataLoader(dataset=test_dataset,
-                          batch_size=self.args.batch_size,
-                          num_workers=self.args.data_workers,
-                          collate_fn=collate_fn_padd,
-                          pin_memory=True)
+    def on_validation_epoch_end(self):
+        # Calculate averages of metrics over the entire epoch
+        avg_loss = torch.stack(self.losses).mean()
+        avg_cer = torch.stack(self.val_cer).mean()
+        avg_wer = torch.stack(self.val_wer).mean()
 
+        # Log all metrics using log_dict
+        metrics = {
+            'val_loss': avg_loss,
+            'val_cer': avg_cer,
+            'val_wer': avg_wer
+        }
 
-def checkpoint_callback(args):
-    """
-    Callback function to configure the ModelCheckpoint callback.
+        self.log_dict(metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True, batch_size=self.args.batch_size, sync_dist=self.sync_dist)
 
-    Args:
-        args (argparse.Namespace): Command-line arguments.
-
-    Returns:
-        ModelCheckpoint: Configured ModelCheckpoint callback.
-    """
-    return ModelCheckpoint(
-        filename='best_model',
-        monitor='val_loss',
-        mode='min',
-        save_top_k=1,
-        dirpath=args.save_model_path,
-    )
+        # Clear the lists for the next epoch
+        self.losses.clear()
+        self.val_wer.clear()
+        self.val_cer.clear()
 
 
 def main(args):
-    """
-    Main function to train the speech recognition model.
-
-    Args:
-        args (argparse.Namespace): Command-line arguments.
-    """
-    h_params = SpeechRecognition.hyper_parameters
-    h_params.update(args.hparams_override)
-    model = SpeechRecognition(**h_params)
-
-    # Print model summary
-    model.print_detailed_summary()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
-    if args.load_model_from:
-        speech_module = SpeechModule.load_from_checkpoint(args.load_model_from, model=model, args=args)
-    else:
-        speech_module = SpeechModule(model, args)
+    directory = "data"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        
+    # Prepare dataset
+    data_module = SpeechDataModule(batch_size=args.batch_size,
+                                   train_url=[
+                                    "train-clean-100", 
+                                    "train-clean-360", 
+                                    "train-other-500",
+                                   ],
+                                   test_url=[
+                                    "test-clean", 
+                                    "test-other",
+                                   ],
+                                   num_workers=args.num_workers)
+    data_module.setup()
 
-    logger = TensorBoardLogger(args.logdir, name='speech_recognition')
+    h_params = {
+        "num_classes": 29,
+        "n_feats": 80,
+        "dropout": 0.2,
+        "hidden_size": 1024,
+        "num_layers": 1
+    }
+    
+    model = SpeechRecognition(**h_params)
+    speech_trainer = ASRTrainer(model=model, args=args)
 
-    trainer = Trainer(
-        max_epochs=args.epochs,
-        gpus=args.gpus,
-        num_nodes=args.nodes,
-        distributed_backend=None,
-        logger=logger,
-        gradient_clip_val=1.0,
-        val_check_interval=args.valid_every,
-        callbacks=[LearningRateMonitor(logging_interval='epoch')],
-        checkpoint_callback=checkpoint_callback(args),
-        resume_from_checkpoint=args.resume_from_checkpoint,
+    # NOTE: Comet Logger
+    comet_logger = CometLogger(api_key=os.getenv('API_KEY'), project_name=os.getenv('PROJECT_NAME'))
+
+    # NOTE: Define Trainer callbacks
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath="./saved_checkpoint/",
+        filename='model-{epoch:02d}-{val_loss:.2f}-{val_wer:.2f}', 
+        save_top_k=3,        # 3 Checkpoints
+        mode='min'
     )
-    trainer.fit(speech_module)
+
+    # Trainer Instance
+    trainer_args = {
+        'accelerator': device,
+        'devices': args.gpus,
+        'min_epochs': 1,
+        'max_epochs': args.epochs,
+        'precision': args.precision,
+        'check_val_every_n_epoch': 1, 
+        'gradient_clip_val': 1.0,
+        'callbacks': [LearningRateMonitor(logging_interval='epoch'),
+                      EarlyStopping(monitor="val_loss"), 
+                      checkpoint_callback],
+        'logger': comet_logger
+    }
+    
+    if args.gpus > 1:
+        trainer_args['strategy'] = args.dist_backend
+        
+    trainer = pl.Trainer(**trainer_args)
+    
+    # Automatically restores model, epoch, step, LR schedulers, etc...
+    ckpt_path = args.checkpoint_path if args.checkpoint_path else None
+
+    trainer.fit(speech_trainer, data_module, ckpt_path=ckpt_path)
+    trainer.validate(speech_trainer, data_module)
+
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    # distributed training setup
-    parser.add_argument('-n', '--nodes', default=1, type=int, help='number of data loading workers')
+    parser = argparse.ArgumentParser(description="Train ASR Model")
+
+    # Train Device Hyperparameters
     parser.add_argument('-g', '--gpus', default=1, type=int, help='number of gpus per node')
-    parser.add_argument('-w', '--data_workers', default=0, type=int,
-                        help='n data loading workers, default 0 = main process only')
-    parser.add_argument('-db', '--dist_backend', default='ddp', type=str,
-                        help='which distributed backend to use. defaul ddp')
+    parser.add_argument('-w', '--num_workers', default=8, type=int, help='n data loading workers, default 0 = main process only')
+    parser.add_argument('-db', '--dist_backend', default='ddp_find_unused_parameters_true', type=str,
+                        help='which distributed backend to use for aggregating multi-gpu train')
 
-    # train and valid
-    parser.add_argument('--train_file', default=None, required=True, type=str,
-                        help='json file to load training data')
-    parser.add_argument('--valid_file', default=None, required=True, type=str,
-                        help='json file to load testing data')
-    parser.add_argument('--valid_every', default=1000, required=False, type=int,
-                        help='valid after every N iteration')
-
-    # dir and path for models and logs
-    parser.add_argument('--save_model_path', default=None, required=True, type=str,
-                        help='path to save model')
-    parser.add_argument('--load_model_from', default=None, required=False, type=str,
-                        help='path to load a pretrain model to continue training')
-    parser.add_argument('--resume_from_checkpoint', default=None, required=False, type=str,
-                        help='check path to resume from')
-    parser.add_argument('--logdir', default='tb_logs', required=False, type=str,
-                        help='path to save logs')
-    
-    # general
-    parser.add_argument('--epochs', default=10, type=int, help='number of total epochs to run')
+    # General Train Hyperparameters
+    parser.add_argument('--epochs', default=50, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=64, type=int, help='size of batch')
-    parser.add_argument('--learning_rate', default=1e-3, type=float, help='learning rate')
-    parser.add_argument('--pct_start', default=0.3, type=float, help='percentage of growth phase in one cycle')
-    parser.add_argument('--div_factor', default=100, type=int, help='div factor for one cycle')
-    parser.add_argument("--hparams_override", default="{}", type=str, required=False,
-		help='override the hyper parameters, should be in form of dict. ie. {"attention_layers": 16 }')
-    parser.add_argument("--dparams_override", default="{}", type=str, required=False,
-		help='override the data parameters, should be in form of dict. ie. {"sample_rate": 16000 }')
+    parser.add_argument('-lr', '--learning_rate', default=2e-4, type=float, help='learning rate')
+    parser.add_argument('--precision', default='16-mixed', type=str, help='precision')
+
+    # Checkpoint path
+    parser.add_argument('--checkpoint_path', default=None, type=str, help='path to a checkpoint file to load and resume training')
 
     args = parser.parse_args()
-    args.hparams_override = ast.literal_eval(args.hparams_override)
-    args.dparams_override = ast.literal_eval(args.dparams_override)
-
-    # Create the directory for saving the model if specified
-    if args.save_model_path:
-       if not os.path.isdir(os.path.dirname(args.save_model_path)):
-           raise Exception("the directory for path {} does not exist".format(args.save_model_path))
-
     main(args)

@@ -64,14 +64,6 @@ class SpeechRecognition(nn.Module):
         - Final fully connected layer.
     """
 
-    hyper_parameters = {
-        "num_classes": 29,
-        "n_feats": 81,
-        "dropout": 0.1,
-        "hidden_size": 1024,
-        "num_layers": 1
-    }
-
     def __init__(self, hidden_size, num_classes, n_feats, num_layers, dropout):
         super(SpeechRecognition, self).__init__()
         self.num_layers = num_layers
@@ -107,33 +99,3 @@ class SpeechRecognition(nn.Module):
         out, (hn, cn) = self.lstm(x, hidden)
         x = self.dropout2(F.gelu(self.layer_norm2(out)))    # (time, batch, n_class)
         return self.final_fc(x), (hn, cn)
-
-    # Model Summarization        
-    def print_detailed_summary(self):
-        print(f"{'='*80}\n{'Model Summary':^80}\n{'='*80}")
-
-        header_format = "{:<5} | {:<30} | {:<20} | {:<10}"
-        row_format = "{:<5} | {:<30} | {:<20} | {:<10}"
-
-        print(header_format.format("No.", "Layer", "Module", "Parameters"))
-        print('='*80)
-
-        counter = 1
-        total_params = 0
-        for name, module in self.named_children():
-            params = sum(p.numel() for p in module.parameters())
-            total_params += params
-            clean_name = f"model.{name}".replace('\t', '').replace(' ', '') 
-            print(row_format.format(counter, clean_name, module.__class__.__name__, params))
-
-            if hasattr(module, 'named_children'):
-                for child_name, child_module in module.named_children():
-                    params_child = sum(p.numel() for p in child_module.parameters())
-                    total_params += params_child
-                    full_child_name = f"model.{name}.{child_name}".replace('\t', '').replace(' ', '') 
-                    print(row_format.format('', full_child_name, child_module.__class__.__name__, params_child))
-            counter += 1
-
-        print('='*80)
-        print(f"Total Trainable Params: {total_params} ~ {round(total_params / 1e6, 2)}M")
-        print('='*80)
