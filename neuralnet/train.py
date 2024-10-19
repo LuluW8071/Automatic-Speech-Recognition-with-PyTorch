@@ -36,7 +36,7 @@ class ASRTrainer(pl.LightningModule):
         self.sync_dist = True if args.gpus > 1 else False
 
         # Save the hyperparams of checkpoint
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["model"])
 
     def forward(self, x, hidden):
         return self.model(x, hidden)
@@ -47,14 +47,14 @@ class ASRTrainer(pl.LightningModule):
             lr=self.args.learning_rate,
             betas=(0.9, 0.98),
             eps=1e-8,
-            weight_decay=1e-5
+            weight_decay=1e-6
         )
 
         scheduler = {
             'scheduler': optim.lr_scheduler.CosineAnnealingWarmRestarts(
                 optimizer,
                 T_0=5,            # Number of epochs for the first restart
-                T_mult=1.5,       # Factor to increase T_0 after each restart
+                T_mult=2,         # Factor to increase T_0 after each restart
                 eta_min=3e-5      # Minimum learning rate
             ),
             'monitor': 'val_loss'
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     # General Train Hyperparameters
     parser.add_argument('--epochs', default=50, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=64, type=int, help='size of batch')
-    parser.add_argument('-lr', '--learning_rate', default=2e-4, type=float, help='learning rate')
+    parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--precision', default='16-mixed', type=str, help='precision')
 
     # Checkpoint path
