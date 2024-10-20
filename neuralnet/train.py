@@ -51,24 +51,24 @@ class ASRTrainer(pl.LightningModule):
         )
 
         scheduler = {
-            'scheduler': optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            'scheduler': optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer,
-                T_0=5,            # Number of epochs for the first restart
-                T_mult=2,         # Factor to increase T_0 after each restart
-                eta_min=3e-5      # Minimum learning rate
+                mode='min',
+                factor=0.50,
+                patience=2
             ),
             'monitor': 'val_loss'
         }
-
         return [optimizer], [scheduler]
     
     def _common_step(self, batch, batch_idx):
         spectrograms, labels, input_lengths, label_lengths = batch
         bs = spectrograms.shape[0]
-        hidden = self.model._init_hidden(bs)
-        hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
-        output, _ = self(spectrograms, (hn, c0))
-        output = F.log_softmax(output, dim=2)
+        
+        # Initialize hidden state
+        hidden = self.model._init_hidden(bs).to(self.device)
+        output, _ = self(spectrograms, hidden)
+        output = F.log_softmax(output, dim=2)  # (time, batch, num_classes)
 
         loss = self.loss_fn(output, labels, input_lengths, label_lengths)
         return loss, output, labels, label_lengths
@@ -148,10 +148,10 @@ def main(args):
     h_params = {
         "num_classes": 29,
         "n_feats": 80,
-        "dropout": 0.2,
-        "hidden_size": 1024,
-        "num_layers": 1
-    }
+        "dropout": 0.1,
+        "hidden_size": 512,
+        "num_layers": 2
+    }   
     
     model = SpeechRecognition(**h_params)
     speech_trainer = ASRTrainer(model=model, args=args)
@@ -176,7 +176,7 @@ def main(args):
         'max_epochs': args.epochs,
         'precision': args.precision,
         'check_val_every_n_epoch': 1, 
-        'gradient_clip_val': 1.0,
+        'gradient_clip_val': 2.0,
         'callbacks': [LearningRateMonitor(logging_interval='epoch'),
                       EarlyStopping(monitor="val_loss"), 
                       checkpoint_callback],
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     # General Train Hyperparameters
     parser.add_argument('--epochs', default=50, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=64, type=int, help='size of batch')
-    parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float, help='learning rate')
+    parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--precision', default='16-mixed', type=str, help='precision')
 
     # Checkpoint path
