@@ -28,7 +28,7 @@ class ASRTrainer(pl.LightningModule):
         # Metrics
         self.losses = []
         self.val_wer, self.val_cer = [], []
-        self.char_error_rate = CharErrorRate()
+        # self.char_error_rate = CharErrorRate()
         self.word_error_rate = WordErrorRate()
         self.loss_fn = nn.CTCLoss(blank=28, zero_infinity=True)
         
@@ -51,11 +51,11 @@ class ASRTrainer(pl.LightningModule):
         )
 
         scheduler = {
-            'scheduler': optim.lr_scheduler.ReduceLROnPlateau(
+            'scheduler': optim.lr_scheduler.CosineAnnealingWarmRestarts(
                 optimizer,
-                mode='min',
-                factor=0.50,
-                patience=2
+                T_0=10,         # Number of epochs for the first restart
+                T_mult=1,       # Factor to increase T_0 after each restart
+                eta_min=5e-5    # Minimum learning rate
             ),
             'monitor': 'val_loss'
         }
@@ -88,16 +88,16 @@ class ASRTrainer(pl.LightningModule):
         decoded_preds, decoded_targets = GreedyDecoder(y_pred.transpose(0, 1), labels, label_lengths)
         
         # Log final predictions
-        if batch_idx % 10 == 0:
+        if batch_idx % 4 == 0:
             log_targets = decoded_targets[-1]
             log_preds = {"Preds": decoded_preds[-1]}
             self.logger.experiment.log_text(text=log_targets, metadata=log_preds)
 
         # Calculate metrics
-        cer_batch = self.char_error_rate(decoded_preds, decoded_targets)
+        # cer_batch = self.char_error_rate(decoded_preds, decoded_targets)
         wer_batch = self.word_error_rate(decoded_preds, decoded_targets)
         
-        self.val_cer.append(cer_batch)
+        # self.val_cer.append(cer_batch)
         self.val_wer.append(wer_batch)
 
         return {'val_loss': loss}
@@ -106,13 +106,13 @@ class ASRTrainer(pl.LightningModule):
     def on_validation_epoch_end(self):
         # Calculate averages of metrics over the entire epoch
         avg_loss = torch.stack(self.losses).mean()
-        avg_cer = torch.stack(self.val_cer).mean()
+        # avg_cer = torch.stack(self.val_cer).mean()
         avg_wer = torch.stack(self.val_wer).mean()
 
         # Log all metrics using log_dict
         metrics = {
             'val_loss': avg_loss,
-            'val_cer': avg_cer,
+            # 'val_cer': avg_cer,
             'val_wer': avg_wer
         }
 
@@ -121,7 +121,7 @@ class ASRTrainer(pl.LightningModule):
         # Clear the lists for the next epoch
         self.losses.clear()
         self.val_wer.clear()
-        self.val_cer.clear()
+        # self.val_cer.clear()
 
 
 def main(args):
@@ -149,7 +149,8 @@ def main(args):
         "num_classes": 29,
         "n_feats": 80,
         "dropout": 0.1,
-        "hidden_size": 512,
+        "hidden_size": 512*2,
+        "layer_size": 128,
         "num_layers": 2
     }   
     
@@ -163,7 +164,7 @@ def main(args):
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath="./saved_checkpoint/",
-        filename='model-{epoch:02d}-{val_loss:.2f}-{val_wer:.2f}', 
+        filename='model-{epoch:02d}-{val_loss:.2f}', 
         save_top_k=3,        # 3 Checkpoints
         mode='min'
     )
@@ -176,9 +177,9 @@ def main(args):
         'max_epochs': args.epochs,
         'precision': args.precision,
         'check_val_every_n_epoch': 1, 
-        'gradient_clip_val': 2.0,
+        'gradient_clip_val': 3.0,
         'callbacks': [LearningRateMonitor(logging_interval='epoch'),
-                      EarlyStopping(monitor="val_loss"), 
+                      EarlyStopping(monitor="val_loss", patience=6), 
                       checkpoint_callback],
         'logger': comet_logger
     }
@@ -205,7 +206,7 @@ if __name__ == "__main__":
                         help='which distributed backend to use for aggregating multi-gpu train')
 
     # General Train Hyperparameters
-    parser.add_argument('--epochs', default=50, type=int, help='number of total epochs to run')
+    parser.add_argument('--epochs', default=20, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=64, type=int, help='size of batch')
     parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--precision', default='16-mixed', type=str, help='precision')
