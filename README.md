@@ -1,132 +1,68 @@
-# Speech Recognition with CNN LSTM Acoustic Model and CTC Decoder + KENLM Language Model
+# End-to-End Automatic Speech Recognition
 
-Welcome to the Speech Recognition system repository! This project implements a state-of-the-art speech recognition system utilizing a Convolutional Neural Network (CNN) - LSTM Acoustic Model, a Connectionist Temporal Classification (CTC) Decoder, and a KENLM Language Model for enhanced accuracy.
+<div align="center">
 
-## Overview
+![Code in Progress](https://img.shields.io/badge/status-completed-green.svg) ![License](https://img.shields.io/github/license/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Open Issues](https://img.shields.io/github/issues/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Closed Issues](https://img.shields.io/github/issues-closed/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Open PRs](https://img.shields.io/github/issues-pr/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Repo Size](https://img.shields.io/github/repo-size/LuluW8071/Deep-Speech-2) ![Last Commit](https://img.shields.io/github/last-commit/LuluW8071/Automatic-Speech-Recognition-with-PyTorch)
 
-This system combines cutting-edge deep learning techniques with traditional language modeling to transcribe spoken language accurately. Below, you'll find instructions on dependencies, terminal commands, and how to run various parts of the system.
+</div>
 
-> [!IMPORTANT]  
-> The repo is outdated, [click here](https://github.com/LuluW8071/ASR-with-Speech-Sentiment-and-Text-Summarizer/tree/main/src/Automatic_Speech_Recognition) for updated ASR repo.
+This project implements a small scale speech recognition system utilizing a Residual Convolutional Neural Network (CNN) - BiGRU Acoustic Model, a Connectionist Temporal Classification (CTC) Decoder, and a KENLM Language Model for enhanced accuracy.
 
-### Dependencies
+## Model Architecture
 
-Before you begin, ensure you have the following dependencies installed:
+## Installation
 
-- [Python 3.10.0](https://www.python.org/downloads/release/python-3100/)
-- [NVIDIA CUDA 12.1.0](https://developer.nvidia.com/cuda-12-1-0-download-archive)
-- [PyTorch [Stable 2.1.1]](https://pytorch.org/)
-- [Pytorch-Lightning 2.1.0](https://www.pytorchlightning.ai/index.html)
-- [ffmpeg](https://www.ffmpeg.org/)
-    ```bash
-    # Extract the archive
-    > ffmpeg/bin/
-    # Edit environment variables to insert path 
-    > path/to/ffmpeg/bin/
-    ```
-- CTC Decoder and KENLM(currently works only on Linux Distros and Mac)
+1. Clone the repository:
+   ```bash
+   git clone --recursive https://github.com/LuluW8071/Automatic-Speech-Recognition-with-PyTorch.git
+   ```
 
-### Terminal Commands
+2. Install **[Pytorch](https://pytorch.org/)** and required dependencies under virtual environment:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-#### 1. Data Collection
+   Ensure you have `PyTorch` and `Lightning AI` installed.
 
-To convert audio files to the required WAV format and create JSON files for training and testing data from Commonvoice by Mozilla, use the following command:
+## Train Model
+
+>[!IMPORTANT]
+> Before training make sure you have placed __comet ml api key__ and __project name__ in the environment variable file `.env`.
 
 ```bash
-py create_commonvoice.py --file_path "file_path\to\.tsv" --save_json_path "save\json\path" --audio "audio\src_path\clips\to\.mp3" --percent 10 --convert
+py train.py
 ```
 
-Alternatively, if conversion isn't needed, you can use `create_jsons_only.py`.
+Customize the pytorch training parameters by passing arguments in `train.py` to suit your needs:
 
-##### JSON Format
- 
-        [
-            {   
-                "key": "/path/to/audio/speech.wav", 
-                "text": "this is yourtext"
-            },
-            ......
-        ]
-
-#### 2. Comet-ML API Integration
-
-For real-time loss curve plotting, edit `config.py` with your Comet.ml API key and project name. Click <a href='https://www.comet.com/site/' target="_blank">here</a> to sign up and get your Comet-ML API key.
-
-#### 3. Training Datasets
-
-To train the model using your own data, execute:
-
-```bash
-py train.py --train_file "path\train.json" --valid_file "path\test.json" --save_model_path 'save\model\path'  --valid_file <value> --batch_size <value> --epochs <value>
-```
-
-Refer to the provided table for various flags and their descriptions.
-| Flag                   | Description                                                           | Default Value      |
+Refer to the provided table to change hyperparameters and train configurations.
+| Args                   | Description                                                           | Default Value      |
 |------------------------|-----------------------------------------------------------------------|--------------------|
-| `-g, --gpus`           | Number of GPUs per node                                               | 1                  |
-| `--train_file`         | JSON file to load training data                                       | [Required]         |
-| `--valid_file`         | JSON file to load testing data                                        | [Required]         |
-| `--save_model_path`    | Path to save the trained model                                        |                    |
-| `--load_model_from`    | Path to load a pre-trained model to continue training                 |                    |
-| `--resume_from_checkpoint` | Checkpoint path to resume training from                           |                    |                                                  | 'tb_logs'          |
-| `--epochs`             | Number of total epochs to run                                         | 10                 |
-| `--batch_size`         | Size of the batch                                                     | 64                 |
-| `--learning_rate`      | Learning rate                                                         | 1e-3  (0.001)      |
+| `-g, --gpus`           | Number of GPUs per node                                               | 1  |
+| `-g, --num_workers`           | Number of CPU workers                                               | 8  |
+| `-db, --dist_backend`           | Distributed backend to use for training                             | ddp_find_unused_parameters_true  |
+| `--epochs`             | Number of total epochs to run                                         | 50                 |
+| `--batch_size`         | Size of the batch                                                     | 32                |
+| `-lr, --learning_rate`      | Learning rate                                                         | 1e-5  (0.00001)      |
+| `--checkpoint_path` | Checkpoint path to resume training from                                 | None |
+| `--precision`        | Precision of the training                                              | 16-mixed |
 
-#### 4. Resuming Training
-
-To resume training from a saved checkpoint, use:
 
 ```bash
-py train.py --train_file 'path\train.json' --valid_file 'path\test.json' --load_model_from 'path\model\best_model.ckpt' --resume_from_checkpoint 'path\model\' --save_model_path 'save\model\path'
+py train.py 
+-g 4                   # Number of GPUs per node for parallel gpu training
+-w 8                   # Number of CPU workers for parallel data loading
+--epochs 10            # Number of total epochs to run
+--batch_size 64        # Size of the batch
+-lr 2e-5               # Learning rate
+--precision 16-mixed   # Precision of the training
 ```
 
-#### 5. CTC Decoder Installation
-
-Clone the CTC Decoder repository and install it using pip:
-
-```bash
-git clone --recursive https://github.com/parlance/ctcdecode.git
-cd ctcdecode
-pip install .
-```
-
-#### 6. Sentence Corpus Extraction
-
-Use `extract_sentences.py` to extract sentences from the Commonvoice dataset or any other source to build the language model.
+>[!NOTE]
+>To __resume training__ from a saved checkpoint, use:
 
 ```bash
-py extract_sentences.py --file_path "file_path\to\.tsv" --save_txt_path "save\path\corpus.txt"
-```
-
-#### 7. KENLM Installation
-
-Build KENLM using cmake and compile the language model using lmplz:
-
-```bash
-mkdir -p build
-cd build
-cmake ..
-make -j 4
-lmplz -o n <path/to/corpus.txt> <path/save/language/model.arpa>
-```
-
-Follow the instruction on KENLM `README.md` to convert `.arpa` file to `.bin` for faster inference. 
-
-#### 8. Freeze Model Checkpoint
-
-After training, freeze the model using `freeze_model.py`:
-
-```bash
-py freeze_model.py --model_checkpoint "path/model/speechrecognition.ckpt" --save_path "path/to/save/"
-```
-
-#### 9. Engine Demo
-
-Finally, run the transcription engine demo using `engine.py`:
-
-```bash
-py engine.py --file_path "path/model/speechrecognition.ckpt" --ken_lm_file "path/to/nglm.arpa or path/to/nglm.bin"
+py train.py --checkpoint_path path_to_checkpoint.ckpt
 ```
 
 ## Additional Resources
