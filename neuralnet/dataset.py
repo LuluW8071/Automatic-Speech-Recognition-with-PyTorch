@@ -1,39 +1,40 @@
 import pytorch_lightning as pl
+import json
 import torchaudio
 import torch
 import torch.nn as nn
 import torchaudio.transforms as transforms
+import numpy as np
+
 from torch.utils.data import DataLoader, Dataset
-from utils import TextTransform
+from utils import TextTransform       # Comment this for engine inference
 
 
 class LogMelSpec(nn.Module):
-    def __init__(self, sample_rate=16000, n_mels=80, win_length=400, hop_length=160, n_fft=512):
+    def __init__(self, sample_rate=16000, n_mels=128, hop_length=160):
         super(LogMelSpec, self).__init__()
         self.transform = transforms.MelSpectrogram(sample_rate=sample_rate, 
                                                    n_mels=n_mels,
-                                                   win_length=win_length,
-                                                   hop_length=hop_length, 
-                                                   n_fft = n_fft)
+                                                   hop_length=hop_length)
 
     def forward(self, x):
-        x = self.transform(x)
-        # x = torch.log(x + 1e-14)  # logarithmic, add small value to avoid inf
-        return x
+        return self.transform(x)  # mel spectrogram
 
-
-def get_featurizer(sample_rate=16000, n_mels=80, win_length=400, hop_length=160, n_fft=512):
+# MelSpec Feature Extraction for ASR Engine Inference
+def get_featurizer(sample_rate=16000, n_mels=128, hop_length=160):
     return LogMelSpec(sample_rate=sample_rate, 
                       n_mels=n_mels,
-                      win_length=win_length,
-                      hop_length=hop_length, 
-                      n_fft = n_fft)
+                      hop_length=hop_length)
 
-
+# Custom Dataset Class
 class CustomAudioDataset(Dataset):
-    def __init__(self, dataset, transform=None, log_ex=True, valid=False):
-        self.dataset = dataset
-        self.text_process = TextTransform()  # Initialize TextProcess for text processing
+    def __init__(self, json_path, transform=None, log_ex=True, valid=False):
+        print(f'Loading json data from {json_path}')
+        with open(json_path, 'r') as f:
+            self.data = json.load(f)
+
+        # Initialize TextProcess for text processing    
+        self.text_process = TextTransform()                 
         self.log_ex = log_ex
 
         if valid:
@@ -43,92 +44,95 @@ class CustomAudioDataset(Dataset):
         else:
             self.audio_transforms = torch.nn.Sequential(
                 LogMelSpec(),
-                transforms.FrequencyMasking(freq_mask_param=30),
-                transforms.TimeMasking(time_mask_param=70)
+                transforms.FrequencyMasking(freq_mask_param=15),
+                transforms.TimeMasking(time_mask_param=27)
             )
 
+
     def __len__(self):
-        return len(self.dataset)
+        return len(self.data)
 
     def __getitem__(self, idx):
+        item = self.data[idx]
+        file_path = item['key']
+
         try:
-            waveform, _, utterance, _, _, _ = self.dataset[idx]
-            utterance = utterance.lower()
+            waveform, _ = torchaudio.load(file_path)        # Point to location of audio data
+            utterance = item['text'].lower()                # Point to sentence of audio data
             label = self.text_process.text_to_int(utterance)
-
-            # Apply audio transformations
-            spectrogram = self.audio_transforms(waveform)  # (channel, feature, time)
-
+            spectrogram = self.audio_transforms(waveform)   # (channel, feature, time)
             spec_len = spectrogram.shape[-1] // 2
             label_len = len(label)
 
-            # Check if spectrogram or label length is valid
-            if spec_len < label_len or spectrogram.shape[0] > 1 or label_len == 0:
-                raise ValueError('Invalid spectrogram or label length.')
+            if spec_len < label_len:
+                raise Exception('spectrogram len is bigger then label len')
+            if spectrogram.shape[0] > 1:
+                raise Exception('dual channel, skipping audio file %s' %file_path)
+            if spectrogram.shape[2] > 1650*3:
+                raise Exception('spectrogram to big. size %s' %spectrogram.shape[2])
+            if label_len == 0:
+                raise Exception('label len is zero... skipping %s' %file_path)
 
             return spectrogram, label, spec_len, label_len
 
         except Exception as e:
+            # Print for debugging if letters in sentences have transform issues
             if self.log_ex:
-                print(f"{str(e)}\r", end='')
+                print(str(e), file_path)
             return self.__getitem__(idx - 1 if idx != 0 else idx + 1)
+        
+    def describe(self):
+        return self.data.describe()
+    
 
-
+# Lightning Data Module
 class SpeechDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size, train_url, test_url, num_workers):
+    def __init__(self, batch_size, train_json, test_json, num_workers):
         super().__init__()
         self.batch_size = batch_size
-        self.train_url = train_url
-        self.test_url = test_url
+        self.train_json = train_json
+        self.test_json = test_json
         self.num_workers = num_workers
-        self.text_process = TextTransform() 
 
     def setup(self, stage=None):
-        # Load multiple training and test URLs
-        train_dataset = [torchaudio.datasets.LIBRISPEECH("./data", url=url, download=True) for url in self.train_url]
-        test_dataset = [torchaudio.datasets.LIBRISPEECH("./data", url=url, download=True) for url in self.test_url]
-
-        # Concatenate multiple datasets into one
-        combined_train_dataset = torch.utils.data.ConcatDataset(train_dataset)
-        combined_test_dataset = torch.utils.data.ConcatDataset(test_dataset)
-
-        self.train_dataset = CustomAudioDataset(combined_train_dataset, valid=False)
-        self.test_dataset = CustomAudioDataset(combined_test_dataset, valid=True)
-
+        self.train_dataset = CustomAudioDataset(self.train_json,
+                                                valid=False)
+        self.test_dataset = CustomAudioDataset(self.test_json, 
+                                               valid=True)
+        
     def data_processing(self, data):
-        spectrograms, labels, input_lengths, label_lengths = [], [], [], []
+        spectrograms = []
+        labels = []
+        input_lengths = []
+        label_lengths = []
         for (spectrogram, label, input_length, label_length) in data:
             if spectrogram is None:
                 continue
+
             spectrograms.append(spectrogram.squeeze(0).transpose(0, 1))
             labels.append(torch.Tensor(label))
             input_lengths.append(input_length)
             label_lengths.append(label_length)
 
-        # Pad the spectrograms to have the same width (time dimension)
+        # NOTE: https://www.geeksforgeeks.org/how-do-you-handle-sequence-padding-and-packing-in-pytorch-for-rnns/
         spectrograms = nn.utils.rnn.pad_sequence(spectrograms, batch_first=True).unsqueeze(1).transpose(2, 3)
         labels = nn.utils.rnn.pad_sequence(labels, batch_first=True)
 
-        # Convert input_lengths and label_lengths to tensors
-        input_lengths = torch.tensor(input_lengths, dtype=torch.long)
-        label_lengths = torch.tensor(label_lengths, dtype=torch.long)
-
-
         return spectrograms, labels, input_lengths, label_lengths
-        
+
+
     def train_dataloader(self):
-        return DataLoader(self.train_dataset,
-                          batch_size=self.batch_size,
-                          shuffle=True,
-                          collate_fn=self.data_processing,
-                          num_workers=self.num_workers,
-                          pin_memory=True)
+        return DataLoader(self.train_dataset, 
+                          batch_size=self.batch_size, 
+                          shuffle=True, 
+                          collate_fn=lambda x: self.data_processing(x), 
+                          num_workers=self.num_workers, 
+                          pin_memory=True)      # Optimizes data-transfer speed
 
     def val_dataloader(self):
-        return DataLoader(self.test_dataset,
-                          batch_size=self.batch_size,
+        return DataLoader(self.test_dataset, 
+                          batch_size=self.batch_size, 
                           shuffle=False,
-                          collate_fn=self.data_processing,
-                          num_workers=self.num_workers,
+                          collate_fn=lambda x: self.data_processing(x), 
+                          num_workers=self.num_workers, 
                           pin_memory=True)
-    

@@ -44,18 +44,15 @@ class ASRTrainer(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.AdamW(
             self.model.parameters(),
-            lr=self.args.learning_rate,
-            betas=(0.9, 0.98),
-            eps=1e-8,
-            weight_decay=1e-6
+            lr=self.args.learning_rate
         )
 
         scheduler = {
             'scheduler': optim.lr_scheduler.CosineAnnealingWarmRestarts(
                 optimizer,
-                T_0=10,         # Number of epochs for the first restart
-                T_mult=1,       # Factor to increase T_0 after each restart
-                eta_min=5e-5    # Minimum learning rate
+                T_0=15,                          # Number of epochs for the first restart
+                T_mult=self.args.lr_step_size,   # Factor to increase T_0 after each restart
+                eta_min=2e-5                     # Minimum learning rate
             ),
             'monitor': 'val_loss'
         }
@@ -63,13 +60,10 @@ class ASRTrainer(pl.LightningModule):
     
     def _common_step(self, batch, batch_idx):
         spectrograms, labels, input_lengths, label_lengths = batch
-        bs = spectrograms.shape[0]
+        hn =  self.model._init_hidden(spectrograms.shape[0]).to(self.device)
+        output, _ = self(spectrograms, hn)
+        output = F.log_softmax(output, dim=2)
         
-        # Initialize hidden state
-        hidden = self.model._init_hidden(bs).to(self.device)
-        output, _ = self(spectrograms, hidden)
-        output = F.log_softmax(output, dim=2)  # (time, batch, num_classes)
-
         loss = self.loss_fn(output, labels, input_lengths, label_lengths)
         return loss, output, labels, label_lengths
     
@@ -88,9 +82,9 @@ class ASRTrainer(pl.LightningModule):
         decoded_preds, decoded_targets = GreedyDecoder(y_pred.transpose(0, 1), labels, label_lengths)
         
         # Log final predictions
-        if batch_idx % 4 == 0:
-            log_targets = decoded_targets[-1]
-            log_preds = {"Preds": decoded_preds[-1]}
+        if batch_idx % 400 == 0:
+            log_targets = "\n".join(decoded_targets)
+            log_preds = "\n".join(decoded_preds)
             self.logger.experiment.log_text(text=log_targets, metadata=log_preds)
 
         # Calculate metrics
@@ -126,93 +120,80 @@ class ASRTrainer(pl.LightningModule):
 
 def main(args):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
-    directory = "data"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-        
+
     # Prepare dataset
     data_module = SpeechDataModule(batch_size=args.batch_size,
-                                   train_url=[
-                                    "train-clean-100", 
-                                    "train-clean-360", 
-                                    "train-other-500",
-                                   ],
-                                   test_url=[
-                                    "test-clean", 
-                                    "test-other",
-                                   ],
+                                   train_json=args.train_json,
+                                   test_json=args.valid_json, 
                                    num_workers=args.num_workers)
     data_module.setup()
 
-    h_params = {
-        "num_classes": 29,
-        "n_feats": 80,
-        "dropout": 0.1,
-        "hidden_size": 512*2,
-        "layer_size": 128,
-        "num_layers": 2
-    }   
-    
+    # Log hyperparams of model and setup trainer
+    h_params = SpeechRecognition.hyper_parameters
     model = SpeechRecognition(**h_params)
-    speech_trainer = ASRTrainer(model=model, args=args)
+    speech_trainer = ASRTrainer(model=model, args=args) 
 
     # NOTE: Comet Logger
-    comet_logger = CometLogger(api_key=os.getenv('API_KEY'), project_name=os.getenv('PROJECT_NAME'))
+    comet_logger = CometLogger(api_key=os.getenv('API_KEY'),
+                               project_name=os.getenv('PROJECT_NAME'))
 
     # NOTE: Define Trainer callbacks
     checkpoint_callback = ModelCheckpoint(
-        monitor='val_loss',
-        dirpath="./saved_checkpoint/",
-        filename='model-{epoch:02d}-{val_loss:.2f}', 
-        save_top_k=3,        # 3 Checkpoints
-        mode='min'
+        monitor='val_loss',                                 # Metric to monitor for checkpointing
+        dirpath="./saved_checkpoint/",                      # Directory to save checkpoints         
+        filename='ASR-{epoch:02d}-{val_wer:.2f}',                                             
+        save_top_k=3,                                       # Number of best checkpoints to save
+        mode='min'                                          # Minimum metric to save checkpoints
     )
 
     # Trainer Instance
     trainer_args = {
-        'accelerator': device,
-        'devices': args.gpus,
-        'min_epochs': 1,
-        'max_epochs': args.epochs,
-        'precision': args.precision,
-        'check_val_every_n_epoch': 1, 
-        'gradient_clip_val': 3.0,
-        'callbacks': [LearningRateMonitor(logging_interval='epoch'),
-                      EarlyStopping(monitor="val_loss", patience=6), 
+        'accelerator': device,                                          # Device to use for training
+        'devices': args.gpus,                                           # Number of GPUs to use for training
+        'min_epochs': 1,                                                # Minimum number of epochs to run
+        'max_epochs': args.epochs,                                      # Maximum number of epochs to run                               
+        'precision': args.precision,                                    # Precision to use for training
+        'check_val_every_n_epoch': 1,                                   # Number of epochs to run validation
+        'gradient_clip_val': 25.0,                                      # Gradient clipping value
+        'callbacks': [LearningRateMonitor(logging_interval='epoch'),    # Callbacks to use for training
+                      EarlyStopping(monitor="val_loss", patience=5),    # Early stopping 
                       checkpoint_callback],
         'logger': comet_logger
     }
     
+    # Distributed training for > 1 GPUs
     if args.gpus > 1:
         trainer_args['strategy'] = args.dist_backend
         
     trainer = pl.Trainer(**trainer_args)
     
-    # Automatically restores model, epoch, step, LR schedulers, etc...
+    # Fit the model to the training data using the Trainer's fit method.
     ckpt_path = args.checkpoint_path if args.checkpoint_path else None
-
-    trainer.fit(speech_trainer, data_module, ckpt_path=ckpt_path)
-    trainer.validate(speech_trainer, data_module)
-
+    
+    trainer.fit(speech_trainer, data_module, ckpt_path=ckpt_path)   # Train the model: load the checkpoint if given and resume training
+    trainer.validate(speech_trainer, data_module)                   # Validation
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train ASR Model")
 
     # Train Device Hyperparameters
     parser.add_argument('-g', '--gpus', default=1, type=int, help='number of gpus per node')
-    parser.add_argument('-w', '--num_workers', default=8, type=int, help='n data loading workers, default 0 = main process only')
-    parser.add_argument('-db', '--dist_backend', default='ddp_find_unused_parameters_true', type=str,
+    parser.add_argument('-w', '--num_workers', default=8, type=int, help='n data loading workers')
+    parser.add_argument('-db', '--dist_backend', default='ddp', type=str,
                         help='which distributed backend to use for aggregating multi-gpu train')
+
+    # Train and Valid File
+    parser.add_argument('--train_json', default=None, required=True, type=str, help='json file to load training data')                   
+    parser.add_argument('--valid_json', default=None, required=True, type=str, help='json file to load testing data')
 
     # General Train Hyperparameters
     parser.add_argument('--epochs', default=20, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=64, type=int, help='size of batch')
-    parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float, help='learning rate')
+    parser.add_argument('-lr','--learning_rate', default=2e-5, type=float, help='learning rate')
     parser.add_argument('--precision', default='16-mixed', type=str, help='precision')
-
+    parser.add_argument('--lr_step_size', type=int, default=2, help='Number of epochs for step decay')
     # Checkpoint path
-    parser.add_argument('--checkpoint_path', default=None, type=str, help='path to a checkpoint file to load and resume training')
+    parser.add_argument('--checkpoint_path', default=None, type=str, help='path to a checkpoint file to resume training')
 
     args = parser.parse_args()
     main(args)
