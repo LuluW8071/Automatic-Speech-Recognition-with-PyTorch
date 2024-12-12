@@ -17,7 +17,7 @@ def trace(model):
         torch.jit.ScriptModule: Traced model.
     """
     model.eval()
-    x = torch.rand(1, 81, 300)
+    x = torch.rand(1, 1, 300, 128)
     hidden = model._init_hidden(1)
     traced = torch.jit.trace(model, (x, hidden))
     return traced
@@ -37,7 +37,7 @@ def main(args):
     model_state_dict = checkpoint['state_dict']
     new_state_dict = OrderedDict()
     for k, v in model_state_dict.items():
-        name = k.replace("model.", "") # remove `model.`
+        name = k.replace("model._orig_mod.", "") # remove `model.`
         new_state_dict[name] = v
 
     model.load_state_dict(new_state_dict)
@@ -45,6 +45,10 @@ def main(args):
     print("tracing model...")
     traced_model = trace(model)
     print("saving to", args.save_path)
+
+    if not os.path.exists(args.save_path):
+        os.makedirs(args.save_path)
+        
     traced_model.save(os.path.join(args.save_path, 'optimized_model.pt'))
     print("Done!")
 
