@@ -62,7 +62,7 @@ class TextTransform:
         # Cache for processed characters
         self._char_cache = {}
 
-    def _process_char(self, c: str) -> int:
+    def _process_char(self, c):
         """Process a single character with caching"""
         if c in self._char_cache:
             return self._char_cache[c]
@@ -74,11 +74,11 @@ class TextTransform:
         self._char_cache[c] = result
         return result
 
-    def text_to_int(self, text: str) -> List[int]:
+    def text_to_int(self, text):
         """Optimized conversion of text to integer sequence"""
         return [self._process_char(c) for c in text.lower()]
 
-    def int_to_text(self, labels: List[int]) -> str:
+    def int_to_text(self, labels):
         """Optimized conversion of integer labels to text"""
         return "".join(self.index_map[i] for i in labels).replace("<SPACE>", " ")
 
@@ -109,4 +109,4 @@ def GreedyDecoder(output, labels, label_lengths, blank_label = 28, collapse_repe
 
 
 # Initialize TextProcess for text processing
-text_transform = TextTransform()s
+text_transform = TextTransform()
