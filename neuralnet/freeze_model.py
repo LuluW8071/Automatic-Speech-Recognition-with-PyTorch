@@ -1,65 +1,50 @@
-"""Freezes and optimize the trained model checkpoint for inference. Use after training."""
-
+import os
 import argparse
 import torch
 from model import SpeechRecognition
 from collections import OrderedDict
-import os 
+
 
 def trace(model):
-    """
-    Traces the model for optimization.
-
-    Args:
-        model (torch.nn.Module): Model to be traced.
-
-    Returns:
-        torch.jit.ScriptModule: Traced model.
-    """
     model.eval()
-    x = torch.rand(1, 1, 300, 128)
+    x = torch.rand(1, 128, 300)
     hidden = model._init_hidden(1)
     traced = torch.jit.trace(model, (x, hidden))
     return traced
 
 def main(args):
-        """
-    Main function to freeze and optimize the model.
-
-    Args:
-        args (argparse.Namespace): Command-line arguments.
-    """
     print("Loading model from", args.model_checkpoint)
     checkpoint = torch.load(args.model_checkpoint, map_location=torch.device('cpu'))
-    h_params = SpeechRecognition.hyper_parameters
+
+    # NOTE: Define Model Hyperparameters
+    h_params = {
+        "num_classes": 29,
+        "n_feats": 128,
+        "dropout": 0.1,
+        "hidden_size": 1024,
+        "num_layers": 2
+    }
     model = SpeechRecognition(**h_params)
 
+    # Load model state dict weights from checkpoint
     model_state_dict = checkpoint['state_dict']
     new_state_dict = OrderedDict()
     for k, v in model_state_dict.items():
-        name = k.replace("model._orig_mod.", "") # remove `model.`
+        name = k.replace("model._orig_mod.", "")
         new_state_dict[name] = v
 
     model.load_state_dict(new_state_dict)
 
+    # Use Torchscript to trace and save the model
     print("tracing model...")
     traced_model = trace(model)
-    print("saving to", args.save_path)
-
-    if not os.path.exists(args.save_path):
-        os.makedirs(args.save_path)
-        
-    traced_model.save(os.path.join(args.save_path, 'optimized_model.pt'))
+    traced_model.save('optimized_model.pt')
     print("Done!")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="freeze model checkpoint")
-    parser.add_argument('--model_checkpoint', type=str, default=None, required=True,
-                        help='Checkpoint of model to optimize')
-    parser.add_argument('--save_path', type=str, default=None, required=True,
-                        help='path to save optimized model')
-
+    parser.add_argument('--model_checkpoint', type=str, default=None, required=True, help='Checkpoint of model to optimize')
     args = parser.parse_args()
-    
+
     main(args)

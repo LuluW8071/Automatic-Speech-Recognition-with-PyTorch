@@ -7,5 +7,6 @@ soundfile
 python-dotenv
 pandas
 numpy
-tqdm
-
+sox
+torchmetrics
+flashlight-text
