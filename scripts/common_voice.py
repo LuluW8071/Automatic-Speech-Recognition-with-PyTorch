@@ -30,7 +30,6 @@ def process_file(row, clips_directory, directory, output_format):
     if os.path.exists(output_audio_path):
         return {'key': clips_directory + '/' + clips_name, 'text': text}
 
-    # Check if the input file is valid before processing
     try:
         tfm = sox.Transformer()
         tfm.rate(samplerate=16000)
@@ -87,24 +86,20 @@ def main(args):
 
     print("Done!")
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=
-                                     """
-                                        Utility script to convert CommonVoice MP3 to FLAC and
-                                        split train and test JSON files for training ASR model. 
-                                     """
-                                    )
-    parser.add_argument('--file_path', type=str, default=None, required=True,
+    parser = argparse.ArgumentParser(description="Utility script to convert CommonVoice MP3 to FLAC/WAV and split train and test JSON files for ASR training.")
+    parser.add_argument('--file_path', type=str, required=True,
                         help='path to one of the .tsv files found in cv-corpus')
-    parser.add_argument('--save_json_path', type=str, default=None, required=True,
+    parser.add_argument('--save_json_path', type=str, required=True,
                         help='path to the dir where the json files are supposed to be saved')
-    parser.add_argument('--percent', type=int, default=10, required=False,
+    parser.add_argument('--percent', type=int, default=15,
                         help='percent of clips put into test.json instead of train.json')
     parser.add_argument('--convert', default=True, action='store_true',
-                        help='indicates that the script should convert mp3 to flac')
+                        help='convert MP3 to FLAC/WAV')
     parser.add_argument('--not-convert', dest='convert', action='store_false',
-                        help='indicates that the script should not convert mp3 to flac')
-    parser.add_argument('-w','--num_workers', type=int, default=2,
+                        help='skip conversion step')
+    parser.add_argument('-w', '--num_workers', type=int, default=4,
                         help='number of worker threads for processing')
     parser.add_argument('--output_format', type=str, default='flac',
                         help='output audio format (flac or wav)')

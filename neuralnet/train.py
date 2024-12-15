@@ -54,10 +54,10 @@ class ASRTrainer(pl.LightningModule):
                 optimizer, 
                 mode='min', 
                 factor=0.6,           # Reduce LR by multiplying it by 0.8
-                patience=2,           # Number of epochs to wait before reducing LR
-                threshold=1e-3,       # Minimum change in val_loss to qualify as improvement
+                patience=2,           # No. of epochs to wait before reducing LR
+                threshold=3e-3,       # Minimum change in val_loss to qualify as improvement
                 threshold_mode='rel', # Relative threshold (e.g., 0.1% change)
-                min_lr=1e-5           # Minimum LR to stop reducing
+                min_lr=1e-5           # Minm. LR to stop reducing
             ),
             'monitor': 'val_loss',    # Metric to monitor
             'interval': 'epoch',      # Scheduler step every epoch
