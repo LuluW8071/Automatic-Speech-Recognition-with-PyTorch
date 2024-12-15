@@ -1,4 +1,4 @@
-# End-to-End Automatic Speech Recognition
+# 🚀 End-to-End Automatic Speech Recognition
 
 <div align="center">
 
@@ -6,70 +6,61 @@
 
 </div>
 
-This project implements a small scale speech recognition system utilizing a Residual Convolutional Neural Network (CNN) - BiGRU Acoustic Model, a Connectionist Temporal Classification (CTC) Decoder, and a KENLM Language Model for enhanced accuracy.
+![Model](assets/model_architecture.png)
 
-## Model Architecture
+This project focuses on creating a small-scale speech recognition system for transcribing audio inputs into text. The system employs a **CNN1D + BiLSTM** based Acoustic Model, designed specifically for small-scale datasets and faster training of ASR (Automatic Speech Recognition).
 
-## Installation
+## 💻 **Installation**
 
-1. Clone the repository:
-   ```bash
-   git clone --recursive https://github.com/LuluW8071/Automatic-Speech-Recognition-with-PyTorch.git
-   ```
-
-2. Install **[Pytorch](https://pytorch.org/)** and required dependencies under virtual environment:
+- Install the **CUDA version** of PyTorch for training and the **CPU version** for inference, then install the remaining dependencies:  
    ```bash
    pip install -r requirements.txt
    ```
 
-   Ensure you have `PyTorch` and `Lightning AI` installed.
+## 🚀 **Usage**
 
-## Train Model
+### **1. Dataset Conversion Script**
 
->[!IMPORTANT]
-> Before training make sure you have placed __comet ml api key__ and __project name__ in the environment variable file `.env`.
-
-```bash
-py train.py
-```
-
-Customize the pytorch training parameters by passing arguments in `train.py` to suit your needs:
-
-Refer to the provided table to change hyperparameters and train configurations.
-| Args                   | Description                                                           | Default Value      |
-|------------------------|-----------------------------------------------------------------------|--------------------|
-| `-g, --gpus`           | Number of GPUs per node                                               | 1  |
-| `-g, --num_workers`           | Number of CPU workers                                               | 8  |
-| `-db, --dist_backend`           | Distributed backend to use for training                             | ddp_find_unused_parameters_true  |
-| `--epochs`             | Number of total epochs to run                                         | 50                 |
-| `--batch_size`         | Size of the batch                                                     | 32                |
-| `-lr, --learning_rate`      | Learning rate                                                         | 1e-5  (0.00001)      |
-| `--checkpoint_path` | Checkpoint path to resume training from                                 | None |
-| `--precision`        | Precision of the training                                              | 16-mixed |
-
+> [!NOTE]
+> - The dataset conversion script is designed to convert the [**CommonVoice**](https://commonvoice.mozilla.org/en/datasets) dataset to the format required for training the speech recognition model. 
+> - Use the `--not-convert` flag to skip the conversion step and export only the dataset paths and utterances in JSON format.
 
 ```bash
-py train.py 
--g 4                   # Number of GPUs per node for parallel gpu training
--w 8                   # Number of CPU workers for parallel data loading
---epochs 10            # Number of total epochs to run
---batch_size 64        # Size of the batch
--lr 2e-5               # Learning rate
---precision 16-mixed   # Precision of the training
-```
+py common_voice.py --file_path path/to/validated.tsv --save_json_path converted_clips --percent 20
+``` 
 
->[!NOTE]
->To __resume training__ from a saved checkpoint, use:
+### **2. Train the Model**
 
 ```bash
-py train.py --checkpoint_path path_to_checkpoint.ckpt
+py train.py --train_json path/to/train.json --valid_json path/to/test.json \
+--epochs 20 \
+--batch_size 32 \
+--lr 1e-4 \
+--grad_clip 0.5 \
+--accumulate_grad 4 \
+--gpus 1 \
+--w 8 \
+--checkpoint_path path/to/checkpoint.ckpt
 ```
 
-## Additional Resources
+### **3. Export to TorchScript**
 
-For pre-trained models and other resources, refer to the provided links.
-[Click here to download pre trained model](https://mega.nz/folder/Lnxj3YCJ#Na6Nc1m4nz6jiSWTatfKJQ)
+```bash
+python freeze_model.py --model_checkpoint path/to/model.ckpt
+```
+
+### **4. Run Inference**
+
+```bash
+python engine.py --model_file path/to/optimized_model.pt --ken_lm_file language_model.bin
+```
 
 ---
 
-This comprehensive guide should help you navigate through setting up and using the Speech Recognition system effectively. If you encounter any issues or have questions, feel free to reach out!
+## 📄 **License**
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+This guide should help you effectively set up and use the speech recognition system. If you encounter any issues or have questions, feel free to reach out or submit a issue in the repository.
