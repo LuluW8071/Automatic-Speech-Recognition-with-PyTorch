@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Code in Progress](https://img.shields.io/badge/status-completed-green.svg) ![License](https://img.shields.io/github/license/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Open Issues](https://img.shields.io/github/issues/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Closed Issues](https://img.shields.io/github/issues-closed/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Open PRs](https://img.shields.io/github/issues-pr/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Repo Size](https://img.shields.io/github/repo-size/LuluW8071/Deep-Speech-2) ![Last Commit](https://img.shields.io/github/last-commit/LuluW8071/Automatic-Speech-Recognition-with-PyTorch)
+![Code in Progress](https://img.shields.io/badge/status-completed-green.svg) ![License](https://img.shields.io/github/license/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Open Issues](https://img.shields.io/github/issues/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Closed Issues](https://img.shields.io/github/issues-closed/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Open PRs](https://img.shields.io/github/issues-pr/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Closed PRs](https://img.shields.io/github/issues-pr-closed/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Repo Size](https://img.shields.io/github/repo-size/LuluW8071/Automatic-Speech-Recognition-with-PyTorch) ![Last Commit](https://img.shields.io/github/last-commit/LuluW8071/Automatic-Speech-Recognition-with-PyTorch)
 
 </div>
 
@@ -12,7 +12,7 @@ This project focuses on creating a small-scale speech recognition system for tra
 
 ## 💻 **Installation**
 
-- Install the **CUDA version** of PyTorch for training and the **CPU version** for inference, then install the remaining dependencies:  
+- Install the **CUDA version** of PyTorch for training or the **CPU version** for inference, then install the remaining dependencies:  
    ```bash
    pip install -r requirements.txt
    ```
@@ -33,11 +33,11 @@ py common_voice.py --file_path path/to/validated.tsv --save_json_path converted_
 
 ```bash
 py train.py --train_json path/to/train.json --valid_json path/to/test.json \
---epochs 20 \
---batch_size 32 \
---lr 1e-4 \
+--epochs 100 \
+--batch_size 64 \
+--lr 2e-4 \
 --grad_clip 0.5 \
---accumulate_grad 4 \
+--accumulate_grad 2 \
 --gpus 1 \
 --w 8 \
 --checkpoint_path path/to/checkpoint.ckpt
@@ -52,14 +52,43 @@ python freeze_model.py --model_checkpoint path/to/model.ckpt
 ### **4. Run Inference**
 
 ```bash
-python engine.py --model_file path/to/optimized_model.pt --ken_lm_file language_model.bin
+python engine.py --model_file path/to/optimized_model.pt
 ```
+
+## Experiment Results
+
+This experiment used ~1,000 hours of audio with 670,000 utterances from Common Voice and my recordings, split 85% for training and 15% for testing.
+
+#### Model Configuration
+
+|hidden_size|num_layers|dropout|n_feats|num_classes|
+|-----------|---------|------|-------|----------|
+|512       |2        |0.1   |128    |29        |
+
+#### Training Configuration
+
+|Parameter|Value|
+|---------|-----|
+|epochs|50|
+|batch_size|32|
+|learning_rate|2e-4|
+|grad_clip|0.6|
+|accumulate_grad_batches|2|
+|gpus|1|
+|num_workers|8|
+
+#### Training Results
+
+|Loss Curve|
+|----------|
+![Losses](assets/loss_curve.jpeg)|
 
 ---
 
+
 ## 📄 **License**
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
