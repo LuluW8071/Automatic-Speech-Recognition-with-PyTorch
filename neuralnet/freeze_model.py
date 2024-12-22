@@ -21,7 +21,7 @@ def main(args):
         "num_classes": 29,
         "n_feats": 128,
         "dropout": 0.1,
-        "hidden_size": 1024,
+        "hidden_size": 512,
         "num_layers": 2
     }
     model = SpeechRecognition(**h_params)
