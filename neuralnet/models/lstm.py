@@ -1,23 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-
-
-class ActDropNormCNN1D(nn.Module):
-    def __init__(self, n_feats, dropout, keep_shape=False):
-        super(ActDropNormCNN1D, self).__init__()
-        self.dropout = nn.Dropout(dropout)
-        self.norm = nn.LayerNorm(n_feats)
-        self.keep_shape = keep_shape
-
-    def forward(self, x):
-        x = x.transpose(1, 2)
-        x = self.dropout(F.gelu(self.norm(x)))
-        if self.keep_shape:
-            return x.transpose(1, 2)
-        else:
-            return x
-
+from cnn_norm import ActDropNormCNN1D
 
 class SpeechRecognition(nn.Module):
     def __init__(self, hidden_size=1024, num_classes=29, n_feats=128, num_layers=2, dropout=0.1):
@@ -49,7 +33,7 @@ class SpeechRecognition(nn.Module):
         self.lstm = nn.LSTM(input_size=128, 
                             hidden_size=hidden_size, 
                             num_layers=num_layers, 
-                            dropout=0.1, bidirectional=True)
+                            dropout=0.15, bidirectional=True)
 
         # LayerNorm for output of LSTM
         self.layer_norm2 = nn.LayerNorm(hidden_size*2)      # x2 for handling bidirectional
