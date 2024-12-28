@@ -16,8 +16,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from dataset import SpeechDataModule
-from model import SpeechRecognition
 from utils import GreedyDecoder
+
+# Model Imports
+# from models.lstm import SpeechRecognition
+from models.gru import SpeechRecognition
 
 
 class ASRTrainer(pl.LightningModule):
@@ -44,6 +47,7 @@ class ASRTrainer(pl.LightningModule):
     # Recall Forward pass of the model
     def forward(self, x, hidden):
         return self.model(x, hidden)
+
     
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate)
@@ -54,8 +58,8 @@ class ASRTrainer(pl.LightningModule):
                 optimizer, 
                 mode='min', 
                 factor=0.6,           # Reduce LR by multiplying it by 0.8
-                patience=2,           # No. of epochs to wait before reducing LR
-                threshold=3e-3,       # Minimum change in val_loss to qualify as improvement
+                patience=1,           # No. of epochs to wait before reducing LR
+                threshold=3e-2,       # Minimum change in val_loss to qualify as improvement
                 threshold_mode='rel', # Relative threshold (e.g., 0.1% change)
                 min_lr=1e-5           # Minm. LR to stop reducing
             ),
@@ -72,10 +76,15 @@ class ASRTrainer(pl.LightningModule):
         
         # Initialize hidden state
         hidden = self.model._init_hidden(bs)
-        hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
 
-        # Pass (spectrograms, (hidden state, cell state)) through the model 
-        output, _ = self(spectrograms, (hn, c0))
+        # NOTE: Pass (spectrograms, (hidden state) through the GRU model 
+        hn = hidden.to(self.device)
+        output, _ = self(spectrograms, hn)
+
+        # NOTE: Pass (spectrograms, (hidden state, cell state)) through the LSTM model
+        # hn, c0 = = hidden[0].to(self.device), hidden[1].to(self.device)
+        # output, _ = self(spectrograms, (hn, c0))
+
         output = F.log_softmax(output, dim=2)  # (time, batch, num_classes)
 
         # Compute CTC loss
@@ -87,7 +96,7 @@ class ASRTrainer(pl.LightningModule):
 
         # Log the train loss in the logger and progress bar
         self.log('train_loss', loss, on_step=True, on_epoch=False, prog_bar=True, logger=True, sync_dist=self.sync_dist)
-        return {'train_loss': loss}
+        return loss
 
     def validation_step(self, batch, batch_idx):
         loss, y_pred, labels, label_lengths = self._common_step(batch, batch_idx)
@@ -97,13 +106,13 @@ class ASRTrainer(pl.LightningModule):
         decoded_preds, decoded_targets = GreedyDecoder(y_pred.transpose(0, 1), labels, label_lengths)
         
         # # Log the formatted targets and predictions in CometML text file
-        if batch_idx % 500 == 0:
+        if batch_idx % 1000 == 0:
             formatted_log = []
             
             # Loop through the targets and predictions, formatting each pair
             for i in range(len(decoded_targets)):
-                formatted_log.append(f"Targets: {decoded_targets[i]}\nPredict: {decoded_preds[i]}")
-            log_text = "\n\n".join(formatted_log)
+                formatted_log.append(f"{decoded_targets[i]}, {decoded_preds[i]}")
+            log_text = "\n".join(formatted_log)
             self.logger.experiment.log_text(text=log_text)
 
         # Calculate CER and WER metrics
@@ -145,22 +154,26 @@ def main(args):
     h_params = {
         "num_classes": 29,
         "n_feats": 128,
-        "dropout": 0.1,
-        "hidden_size": 1024,
+        "dropout": 0.15,
+        "hidden_size": 768,
         "num_layers": 2
     }
 
+    
     model = torch.compile(SpeechRecognition(**h_params))
     speech_trainer = ASRTrainer(model=model, args=args) 
 
     # NOTE: Comet Logger
-    comet_logger = CometLogger(api_key=os.getenv('API_KEY'), project_name=os.getenv('PROJECT_NAME'))
+    comet_logger = CometLogger(
+        api_key=os.getenv('API_KEY'), 
+        project_name=os.getenv('PROJECT_NAME')
+    )
 
     # NOTE: Define Trainer callbacks
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath="./saved_checkpoint/",       
-        filename='ASR-{epoch:02d}-{val_wer:.2f}',                                             
+        filename='model-{epoch:02d}-{val_loss:.3f}-{val_wer:.3f}',                                             
         save_top_k=3,
         mode='min'
     )
@@ -184,13 +197,11 @@ def main(args):
     if args.gpus > 1:
         trainer_args['strategy'] = args.dist_backend
     trainer = pl.Trainer(**trainer_args)
-    
-    # Resume training from checkpoint if given
-    ckpt_path = args.checkpoint_path if args.checkpoint_path else None
 
     # Fit the model to the train and val. data
-    trainer.fit(speech_trainer, data_module, ckpt_path=ckpt_path)
+    trainer.fit(speech_trainer, data_module, ckpt_path=args.checkpoint_path)
     trainer.validate(speech_trainer, data_module)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train ASR Model")
@@ -206,7 +217,7 @@ if __name__ == "__main__":
     parser.add_argument('--valid_json', default=None, required=True, type=str, help='json file to load testing data')
 
     # General Train Hyperparameters
-    parser.add_argument('--epochs', default=50, type=int, help='number of total epochs to run')
+    parser.add_argument('--epochs', default=100, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=32, type=int, help='size of batch')
     parser.add_argument('-lr','--learning_rate', default=3e-4, type=float, help='learning rate')
     parser.add_argument('--precision', default='32-true', type=str, help='precision')
