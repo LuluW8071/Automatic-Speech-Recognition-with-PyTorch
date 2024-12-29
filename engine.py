@@ -5,11 +5,9 @@ import argparse
 import wave
 import torchaudio
 import torch
-import sys
-import numpy as np
 from neuralnet.dataset import get_featurizer
-from decoder import DecodeGreedy, CTCBeamDecoder
-from threading import Event
+from decoder import CTCBeamDecoder
+from torchaudio.models.decoder import download_pretrained_files
 
 
 class Listener:
@@ -28,12 +26,12 @@ class Listener:
         start (bool): Flag to indicate if the speech recognition engine has started.
     """
 
-    def __init__(self, sample_rate=8000, record_seconds=2):
+    def __init__(self, sample_rate=16000, record_seconds=2):
         """
         Initializes the Listener object with specified parameters.
 
         Args:
-            sample_rate (int): Sampling rate for audio input (default: 8000 Hz).
+            sample_rate (int): Sampling rate for audio input (default: 16000 Hz).
             record_seconds (int): Duration of each audio recording in seconds (default: 2 seconds).
         """
         self.chunk = 1024
@@ -55,7 +53,7 @@ class Listener:
             queue (list): List to store audio input data.
         """
         while True:
-            data = self.stream.read(self.chunk , exception_on_overflow=False)
+            data = self.stream.read(self.chunk, exception_on_overflow=False)
             queue.append(data)
             time.sleep(0.01)
 
@@ -75,7 +73,7 @@ class SpeechRecognitionEngine:
     """
     Class to perform speech recognition using a pre-trained model.
     """
-    def __init__(self, model_file, ken_lm_file, context_length=10):
+    def __init__(self, model_file, token_path, lexicon_path, kenlm_path, context_length=10):
         """
         Initializes the SpeechRecognitionEngine with the specified parameters.
 
@@ -84,15 +82,15 @@ class SpeechRecognitionEngine:
             ken_lm_file (str): Path to the KenLM language model file.
             context_length (int): Length of the context window in seconds (default: 10 seconds).
         """
-        self.listener = Listener(sample_rate=8000)
+        self.listener = Listener(sample_rate=16000)
         self.model = torch.jit.load(model_file)
         self.model.eval().to('cpu')  # Run on cpu
-        self.featurizer = get_featurizer(8000)
+        self.featurizer = get_featurizer(16000)
         self.audio_q = list()
-        self.hidden = (torch.zeros(1, 1, 1024), torch.zeros(1, 1, 1024))
+        self.hidden = (torch.zeros(4, 1, 512), torch.zeros(4, 1, 512))  # (num_layers*2 for bi-direction, 1, hidden_size)
         self.beam_results = ""
         self.out_args = None
-        self.beam_search = CTCBeamDecoder(beam_size=100, kenlm_path=ken_lm_file)
+        self.beam_search = CTCBeamDecoder(beam_size=25, token_path=token_path, lexicon_path=lexicon_path, kenlm_path=kenlm_path)
         self.context_length = context_length * 50 # multiply by 50 because each 50 from output frame is 1 second
         self.start = False
 
@@ -113,7 +111,7 @@ class SpeechRecognitionEngine:
         # set the sample format
         wf.setsampwidth(self.listener.p.get_sample_size(pyaudio.paInt16))
         # set the sample rate
-        wf.setframerate(8000)
+        wf.setframerate(16000)
         # write the frames as bytes
         wf.writeframes(b"".join(waveforms))
         # close the file
@@ -203,20 +201,32 @@ class DemoAction:
         if current_context_length > 10:
             self.asr_results = transcript
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="demoing the speech recognition engine in terminal.")
-    parser.add_argument('--model_file', type=str, default=None, required=True,
-                        help='optimized file to load. use freeze_model.py')
-    parser.add_argument('--ken_lm_file', type=str, default=None, required=False,
-                        help='If you have an ngram lm use to decode')
 
-    args = parser.parse_args()
+def main():
+    with open(args.token_path, 'r') as f:
+        tokens = f.read().splitlines()
 
-    # activate speech recognition engine
-    asr_engine = SpeechRecognitionEngine(args.model_file, args.ken_lm_file)
+    files = download_pretrained_files("librispeech-4-gram")
+    
+    # Activate speech recognition engine
+    asr_engine = SpeechRecognitionEngine(
+        model_file=args.model_path, 
+        token_path=tokens, 
+        lexicon_path=files.lexicon, 
+        kenlm_path=files.lm)
     action = DemoAction()
 
     # Start the speech recognition engine 
     # and wait for the threading event to keep the program running
     asr_engine.run(action)
     threading.Event().wait()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="demoing the speech recognition engine in terminal.")
+    parser.add_argument('--model_path', type=str, default=None, required=True,
+                        help='optimized file to load. use freeze_model.py')
+    parser.add_argument('--token_path', type=str, default="assets/tokens.txt", required=False,
+                        help='path to the token file')
+    args = parser.parse_args()
+
+    main()
