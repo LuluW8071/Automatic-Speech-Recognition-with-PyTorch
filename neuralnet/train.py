@@ -209,7 +209,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=50, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=32, type=int, help='size of batch')
     parser.add_argument('-lr','--learning_rate', default=3e-4, type=float, help='learning rate')
-    parser.add_argument('--precision', default='16-mixed', type=str, help='precision')
+    parser.add_argument('--precision', default='32-true', type=str, help='precision')
     parser.add_argument('--checkpoint_path', default=None, type=str, help='path of checkpoint file to resume training')
     parser.add_argument('-gc', '--grad_clip', default=0.8, type=float, help='gradient norm clipping value')
     parser.add_argument('-ag', '--accumulate_grad', default=2, type=int, help='number of batches to accumulate gradients over')

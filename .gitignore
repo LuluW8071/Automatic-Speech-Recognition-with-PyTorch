@@ -24,3 +24,7 @@ optimized_model.ckpt
 audio_temp
 
 demo/transcript.txt
+
+# Model Checkpints
+*.ckpt
+*.pt
