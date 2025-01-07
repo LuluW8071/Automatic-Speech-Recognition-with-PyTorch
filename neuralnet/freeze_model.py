@@ -1,14 +1,15 @@
-import os
 import argparse
 import torch
-from model import SpeechRecognition
 from collections import OrderedDict
+
+# from models.lstm import SpeechRecognition
+from models.gru import SpeechRecognition
 
 
 def trace(model):
     model.eval()
-    x = torch.rand(1, 128, 300)
-    hidden = model._init_hidden(1)
+    x = torch.rand(1, 128, 300)     # batch_size, feature, time
+    hidden = model._init_hidden(1)  # batch_size: 1
     traced = torch.jit.trace(model, (x, hidden))
     return traced
 
@@ -21,7 +22,7 @@ def main(args):
         "num_classes": 29,
         "n_feats": 128,
         "dropout": 0.1,
-        "hidden_size": 512,
+        "hidden_size": 768,
         "num_layers": 2
     }
     model = SpeechRecognition(**h_params)

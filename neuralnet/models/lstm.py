@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from cnn_norm import ActDropNormCNN1D
+from .cnn_norm import ActDropNormCNN1D
 
 class SpeechRecognition(nn.Module):
     def __init__(self, hidden_size=1024, num_classes=29, n_feats=128, num_layers=2, dropout=0.1):

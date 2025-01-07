@@ -82,7 +82,7 @@ class ASRTrainer(pl.LightningModule):
         output, _ = self(spectrograms, hn)
 
         # NOTE: Pass (spectrograms, (hidden state, cell state)) through the LSTM model
-        # hn, c0 = = hidden[0].to(self.device), hidden[1].to(self.device)
+        # hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
         # output, _ = self(spectrograms, (hn, c0))
 
         output = F.log_softmax(output, dim=2)  # (time, batch, num_classes)
