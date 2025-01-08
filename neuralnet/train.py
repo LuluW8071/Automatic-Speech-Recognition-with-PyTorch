@@ -78,12 +78,16 @@ class ASRTrainer(pl.LightningModule):
         hidden = self.model._init_hidden(bs)
 
         # NOTE: Pass (spectrograms, (hidden state) through the GRU model 
+        # ========================
         hn = hidden.to(self.device)
         output, _ = self(spectrograms, hn)
-
+        # ========================
+            
         # NOTE: Pass (spectrograms, (hidden state, cell state)) through the LSTM model
+        # ========================
         # hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
         # output, _ = self(spectrograms, (hn, c0))
+        # ========================
 
         output = F.log_softmax(output, dim=2)  # (time, batch, num_classes)
 
