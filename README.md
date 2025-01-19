@@ -60,7 +60,7 @@ python engine.py --model_file path/to/optimized_model.pt
 
 ## Experiment Results
 
-This experiment used ~1,000 hours of audio with 670,000 utterances from Common Voice and my recordings, split 85% for training and 15% for testing.
+This experiment used ~1,000 hours of audio with 670,000 utterances from Common Voice and my recordings, split 85% for training and 15% for testing. You can download the trained checkpoint and small 4-gram KENLM model from [here](https://mega.nz/folder/Lnxj3YCJ#Na6Nc1m4nz6jiSWTatfKJQ).
 
 #### Model Configuration
 
