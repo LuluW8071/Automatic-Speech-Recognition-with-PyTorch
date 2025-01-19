@@ -32,7 +32,7 @@ py common_voice.py --file_path path/to/validated.tsv --save_json_path converted_
 ### **2. Train the Model**
 
 > [!IMPORTANT]
-> Two model choices are provided: __GRU__ and __LSTM__-based, in `train.py`. Uncomment the one you want and comment out the other.
+> Two model choices are provided: __GRU__ and __LSTM__-based, in `train.py`. Uncomment the one you want and comment out the other. However, the LSTM performs better due to its ability to capture longer contexts.
 
 ```bash
 py train.py --train_json path/to/train.json --valid_json path/to/test.json \
@@ -67,7 +67,6 @@ This experiment used ~1,000 hours of audio with 670,000 utterances from Common V
 |model|hidden_size|num_layers|dropout|n_feats|num_classes|
 |----|-----------|---------|------|-------|----------|
 |Bi-LSTM|512       |2        |0.1   |128    |29        |
-|Bi-GRU|768       |2        |0.1   |128    |29        |
 
 #### Training Results
 
@@ -77,8 +76,7 @@ This experiment used ~1,000 hours of audio with 670,000 utterances from Common V
 
 |Model|Best Epoch|Val Loss|Avg. Greedy WER|Avg. CTC+KenLM |
 |-|-|-|-|-|
-|__Bi-LSTM__|61|0.359|28.4%|~22-23%|
-|__Bi-GRU__|||![In Progress](https://img.shields.io/badge/status-in_progress-green.svg)|![In Progress](https://img.shields.io/badge/status-in_progress-green.svg)
+|__Bi-LSTM__|61|0.359|28.44%|~22-23%|
 
 > [!NOTE]
 > __4-gram LibriSpeech KENLM__ was used for inference. If you build your own KenLM, the WER should be even lower.
