@@ -2,8 +2,8 @@ import argparse
 import torch
 from collections import OrderedDict
 
-# from models.lstm import SpeechRecognition
-from models.gru import SpeechRecognition
+from models.lstm import SpeechRecognition
+# from models.gru import SpeechRecognition
 
 
 def trace(model):
@@ -22,7 +22,7 @@ def main(args):
         "num_classes": 29,
         "n_feats": 128,
         "dropout": 0.1,
-        "hidden_size": 768,
+        "hidden_size": 512,
         "num_layers": 2
     }
     model = SpeechRecognition(**h_params)

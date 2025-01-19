@@ -19,8 +19,8 @@ from dataset import SpeechDataModule
 from utils import GreedyDecoder
 
 # Model Imports
-# from models.lstm import SpeechRecognition
-from models.gru import SpeechRecognition
+from models.lstm import SpeechRecognition
+# from models.gru import SpeechRecognition
 
 
 class ASRTrainer(pl.LightningModule):
@@ -79,14 +79,14 @@ class ASRTrainer(pl.LightningModule):
 
         # NOTE: Pass (spectrograms, (hidden state) through the GRU model 
         # ========================
-        hn = hidden.to(self.device)
-        output, _ = self(spectrograms, hn)
+        # hn = hidden.to(self.device)
+        # output, _ = self(spectrograms, hn)
         # ========================
             
         # NOTE: Pass (spectrograms, (hidden state, cell state)) through the LSTM model
         # ========================
-        # hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
-        # output, _ = self(spectrograms, (hn, c0))
+        hn, c0 = hidden[0].to(self.device), hidden[1].to(self.device)
+        output, _ = self(spectrograms, (hn, c0))
         # ========================
 
         output = F.log_softmax(output, dim=2)  # (time, batch, num_classes)
@@ -109,7 +109,7 @@ class ASRTrainer(pl.LightningModule):
         # Greedy decoding
         decoded_preds, decoded_targets = GreedyDecoder(y_pred.transpose(0, 1), labels, label_lengths)
         
-        # # Log the formatted targets and predictions in CometML text file
+        # Log the formatted targets and predictions in CometML text file
         if batch_idx % 1000 == 0:
             formatted_log = []
             
@@ -158,13 +158,13 @@ def main(args):
     h_params = {
         "num_classes": 29,
         "n_feats": 128,
-        "dropout": 0.15,
-        "hidden_size": 768,
+        "dropout": 0.1,
+        "hidden_size": 512,
         "num_layers": 2
     }
 
     
-    model = torch.compile(SpeechRecognition(**h_params))
+    model = SpeechRecognition(**h_params)
     speech_trainer = ASRTrainer(model=model, args=args) 
 
     # NOTE: Comet Logger
